@@ -20,10 +20,10 @@ from src.services.ai_request_compat import (
     CHAT_COMPLETIONS_API_MODE,
     RESPONSES_API_MODE,
     build_ai_request_params,
+    build_thinking_disable_extra,
     create_ai_response_sync,
     is_chat_completions_api_unsupported_error,
     is_responses_api_unsupported_error,
-    model_requires_thinking_disabled,
 )
 from src.services.ai_response_parser import extract_ai_response_content
 from src.services.notification_config_service import (
@@ -464,7 +464,7 @@ async def test_ai_settings(model: AIModelConfigModel):
         client = OpenAI(**client_params)
         messages = [{"role": "user", "content": AI_TEST_PROMPT}]
         api_mode = CHAT_COMPLETIONS_API_MODE
-        disable_thinking = model_requires_thinking_disabled(model_name)
+        thinking_extra = build_thinking_disable_extra(model_name, model.base_url) or None
 
         try:
             request_params = build_ai_request_params(
@@ -474,8 +474,8 @@ async def test_ai_settings(model: AIModelConfigModel):
                 max_output_tokens=AI_TEST_MAX_OUTPUT_TOKENS,
                 enable_json_output=bool(model.enable_response_format),
             )
-            if disable_thinking:
-                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
+            if thinking_extra:
+                request_params["extra_body"] = thinking_extra
             response = create_ai_response_sync(client, api_mode, request_params)
         except Exception as exc:
             if not is_chat_completions_api_unsupported_error(exc):
@@ -488,8 +488,8 @@ async def test_ai_settings(model: AIModelConfigModel):
                 max_output_tokens=AI_TEST_MAX_OUTPUT_TOKENS,
                 enable_json_output=bool(model.enable_response_format),
             )
-            if disable_thinking:
-                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
+            if thinking_extra:
+                request_params["extra_body"] = thinking_extra
             response = create_ai_response_sync(client, api_mode, request_params)
 
         return {

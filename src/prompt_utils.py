@@ -61,7 +61,7 @@ async def _request_generated_text(ai_client: AIClient, prompt: str) -> str:
         generated_text = await ai_client._call_ai(
             [{"role": "user", "content": prompt}],
             temperature=0.5,
-            max_output_tokens=4000,
+            max_output_tokens=8192,
             enable_json_output=False,
         )
     except Exception as exc:

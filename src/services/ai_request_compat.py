@@ -43,6 +43,23 @@ def model_requires_thinking_disabled(model_name: str) -> bool:
     return any(marker in name for marker in THINKING_DISABLED_MODEL_MARKERS)
 
 
+def build_thinking_disable_extra(model_name: str, base_url: str = "") -> Dict[str, Any] | None:
+    """按模型/MSP 返回关闭思考所需的 extra_body 参数；无需关闭时返回 None。
+
+    - MiniMax：OpenAI 兼容的 thinking.type=disabled
+    - 腾讯 Hunyuan（hy3 / lkeap）：enable_thinking=False（enable_thinking=True 时模型会把
+      输出几乎全部写入 reasoning_content 而让 content 为空，导致取不到答案）
+    """
+    name = (model_name or "").lower()
+    url = (base_url or "").lower()
+    if "minimax" in name:
+        return {"thinking": {"type": "disabled"}}
+    is_tencent = ("lkeap" in url) or ("tencent" in url) or ("hunyuan" in name) or name.startswith("hy")
+    if is_tencent:
+        return {"enable_thinking": False}
+    return None
+
+
 def build_responses_input(messages: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """将 Chat Completions 风格的消息转换为 Responses API 输入。"""
     input_items: List[Dict[str, Any]] = []

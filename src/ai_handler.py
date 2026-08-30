@@ -45,7 +45,7 @@ from src.services.ai_request_compat import (
     is_rate_limit_error,
     is_responses_api_unsupported_error,
     is_temperature_unsupported_error,
-    model_requires_thinking_disabled,
+    build_thinking_disable_extra,
     remove_temperature_param,
 )
 from src.services.notification_service import NotificationService, build_notification_service
@@ -446,15 +446,16 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                 model=model_name,
                 messages=messages,
                 temperature=current_temperature,
-                max_output_tokens=4000,
+                max_output_tokens=8192,
                 enable_json_output=use_response_format,
             )
             if not use_temperature:
                 request_params = remove_temperature_param(request_params)
 
-            # MiniMax（含 M3）需显式关闭 thinking；使用标准 OpenAI 兼容格式 thinking.type=disabled
-            if model_requires_thinking_disabled(model_name):
-                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
+            # 按模型关闭 thinking：MiniMax 用 thinking.type=disabled，腾讯 Hy3 用 enable_thinking=False
+            thinking_extra = build_thinking_disable_extra(model_name)
+            if thinking_extra:
+                request_params["extra_body"] = thinking_extra
 
             if AI_DEBUG_MODE:
                 safe_print(f"\n--- [AI DEBUG] 第{attempt + 1}次尝试 REQUEST ---")
@@ -632,9 +633,10 @@ async def _screen_with_single_model(
                 max_output_tokens=1024,
                 enable_json_output=enable_response_format,
             )
-            # MiniMax（含 M3）需显式关闭 thinking；使用标准 OpenAI 兼容格式 thinking.type=disabled
-            if model_requires_thinking_disabled(model_name):
-                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
+            # 按模型关闭 thinking：MiniMax 用 thinking.type=disabled，腾讯 Hy3 用 enable_thinking=False
+            thinking_extra = build_thinking_disable_extra(model_name)
+            if thinking_extra:
+                request_params["extra_body"] = thinking_extra
 
             response = await create_ai_response_async(client, api_mode, request_params)
             content = extract_ai_response_content(response)

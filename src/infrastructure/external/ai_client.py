@@ -29,7 +29,7 @@ from src.services.ai_request_compat import (
     is_rate_limit_error,
     is_responses_api_unsupported_error,
     is_temperature_unsupported_error,
-    model_requires_thinking_disabled,
+    build_thinking_disable_extra,
     remove_temperature_param,
 )
 
@@ -328,9 +328,14 @@ class AIClient:
             if not use_temperature:
                 request_params = remove_temperature_param(request_params)
 
-            if config.get("enable_thinking") or model_requires_thinking_disabled(model_name):
-                # MiniMax（含 M3）通过 thinking.type=disabled 关闭思考；M2.x 会忽略。
-                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
+            thinking_extra = build_thinking_disable_extra(
+                model_name, config.get("base_url", "")
+            )
+            if thinking_extra is None and config.get("enable_thinking"):
+                # 手动开启“禁用思考”开关时的通用兜底
+                thinking_extra = {"thinking": {"type": "disabled"}}
+            if thinking_extra:
+                request_params["extra_body"] = thinking_extra
 
             try:
                 response = await create_ai_response_async(
