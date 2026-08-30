@@ -257,7 +257,6 @@ const zhCN = {
       addModel: '添加模型',
       testing: '测试中...',
       enableResponseFormat: '启用结构化 JSON 输出',
-      enableThinking: '启用思考模式（关闭则禁用 thinking）',
       skipAnalysis: '跳过 AI 分析（仅爬取，不调用模型）',
     },
     rotation: { saved: '轮换设置已保存', saveFailed: '轮换设置保存失败' },

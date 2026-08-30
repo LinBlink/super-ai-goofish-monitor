@@ -159,7 +159,6 @@ function addModel() {
     api_key: '',
     proxy_url: '',
     enable_response_format: true,
-    enable_thinking: false,
   })
 }
 
@@ -310,10 +309,6 @@ watch(selectedPrompt, async (value) => {
                 <label class="flex items-center gap-2 text-sm">
                   <input type="checkbox" v-model="model.enable_response_format" />
                   {{ t('settings.ai.enableResponseFormat') }}
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                  <input type="checkbox" v-model="model.enable_thinking" />
-                  {{ t('settings.ai.enableThinking') }}
                 </label>
                 <Button
                   variant="outline"

@@ -117,7 +117,6 @@ export function useSettings() {
         model_name: (m.model_name || '').trim(),
         proxy_url: m.proxy_url ? m.proxy_url.trim() : undefined,
         enable_response_format: m.enable_response_format !== false,
-        enable_thinking: m.enable_thinking === true,
       }))
       const payload: AiSettings = {
         models,

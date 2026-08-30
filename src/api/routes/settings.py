@@ -124,7 +124,6 @@ class AIModelConfigModel(BaseModel):
     base_url: str
     model_name: str
     enable_response_format: Optional[bool] = True
-    enable_thinking: Optional[bool] = False
     proxy_url: Optional[str] = None
 
 
@@ -378,7 +377,6 @@ async def get_ai_settings():
             "base_url": cfg.get("base_url"),
             "model_name": cfg.get("model_name"),
             "enable_response_format": cfg.get("enable_response_format", True),
-            "enable_thinking": cfg.get("enable_thinking", False),
             "proxy_url": cfg.get("proxy_url"),
         })
     return {
@@ -417,7 +415,6 @@ async def update_ai_settings(settings: AISettingsModel):
             "base_url": m.base_url,
             "model_name": m.model_name,
             "enable_response_format": bool(m.enable_response_format),
-            "enable_thinking": bool(m.enable_thinking),
             "proxy_url": m.proxy_url or None,
         })
 
@@ -431,7 +428,6 @@ async def update_ai_settings(settings: AISettingsModel):
         updates["ENABLE_RESPONSE_FORMAT"] = _normalize_bool_value(
             primary.get("enable_response_format", True)
         )
-        updates["ENABLE_THINKING"] = _normalize_bool_value(primary.get("enable_thinking", False))
         updates["PROXY_URL"] = primary.get("proxy_url") or ""
     else:
         updates["AI_MODELS"] = ""
@@ -439,7 +435,6 @@ async def update_ai_settings(settings: AISettingsModel):
         updates["OPENAI_BASE_URL"] = ""
         updates["OPENAI_MODEL_NAME"] = ""
         updates["ENABLE_RESPONSE_FORMAT"] = "true"
-        updates["ENABLE_THINKING"] = "false"
         updates["PROXY_URL"] = ""
 
     success = env_manager.update_values(updates)
@@ -469,7 +464,7 @@ async def test_ai_settings(model: AIModelConfigModel):
         client = OpenAI(**client_params)
         messages = [{"role": "user", "content": AI_TEST_PROMPT}]
         api_mode = CHAT_COMPLETIONS_API_MODE
-        disable_thinking = bool(model.enable_thinking) or model_requires_thinking_disabled(model_name)
+        disable_thinking = model_requires_thinking_disabled(model_name)
 
         try:
             request_params = build_ai_request_params(

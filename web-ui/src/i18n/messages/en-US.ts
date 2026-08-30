@@ -257,7 +257,6 @@ const enUS = {
       addModel: 'Add Model',
       testing: 'Testing...',
       enableResponseFormat: 'Enable structured JSON output',
-      enableThinking: 'Enable thinking mode (off disables thinking)',
       skipAnalysis: 'Skip AI analysis (crawl only, no model calls)',
     },
     rotation: { saved: 'Rotation settings saved.', saveFailed: 'Failed to save rotation settings.' },

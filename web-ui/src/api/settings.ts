@@ -86,7 +86,6 @@ export interface AIModelConfig {
   base_url: string
   model_name: string
   enable_response_format?: boolean
-  enable_thinking?: boolean
   proxy_url?: string
 }
 
