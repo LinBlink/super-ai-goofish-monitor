@@ -25,6 +25,7 @@ interface Props {
   aiRecommendedOnly: boolean
   keywordRecommendedOnly: boolean
   includeHidden: boolean
+  recentDays: number | null
   sortBy: 'crawl_time' | 'publish_time' | 'price' | 'keyword_hit_count' | 'smart'
   sortOrder: 'asc' | 'desc'
   isLoading: boolean
@@ -68,12 +69,24 @@ const emit = defineEmits<{
   (e: 'update:aiRecommendedOnly', value: boolean): void
   (e: 'update:keywordRecommendedOnly', value: boolean): void
   (e: 'update:includeHidden', value: boolean): void
+  (e: 'update:recentDays', value: number | null): void
   (e: 'update:sortBy', value: 'crawl_time' | 'publish_time' | 'price' | 'keyword_hit_count' | 'smart'): void
   (e: 'update:sortOrder', value: 'asc' | 'desc'): void
   (e: 'refresh'): void
   (e: 'export'): void
   (e: 'delete'): void
 }>()
+
+const dateRanges = computed(() => [
+  { value: null as number | null, label: t('results.filters.dateAll') },
+  { value: 1, label: t('results.filters.date1d') },
+  { value: 3, label: t('results.filters.date3d') },
+  { value: 7, label: t('results.filters.date7d') },
+])
+
+function isDateActive(value: number | null) {
+  return props.recentDays === value
+}
 
 function handleToggleAiRecommended(value: boolean) {
   emit('update:aiRecommendedOnly', value)
@@ -145,6 +158,21 @@ function handleToggleKeywordRecommended(value: boolean) {
             <SelectItem value="asc">{{ t('results.filters.asc') }}</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <Label class="text-xs font-semibold text-slate-500">{{ t('results.filters.dateRange') }}</Label>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <Button
+          v-for="range in dateRanges"
+          :key="String(range.value)"
+          :variant="isDateActive(range.value) ? 'gradient' : 'outline'"
+          :size="'sm'"
+          @click="emit('update:recentDays', range.value)"
+        >
+          {{ range.label }}
+        </Button>
       </div>
     </div>
 

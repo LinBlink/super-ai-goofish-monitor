@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from src.infrastructure.persistence.sqlite_bootstrap import bootstrap_sqlite_storage
 from src.infrastructure.persistence.sqlite_connection import sqlite_connection
@@ -49,9 +49,14 @@ def _build_query_conditions(
     filename: str,
     ai_recommended_only: bool,
     keyword_recommended_only: bool,
+    recent_days: int | None = None,
 ) -> tuple[str, list]:
     conditions = ["result_filename = ?"]
     params: list = [filename]
+    if recent_days is not None and recent_days > 0:
+        cutoff = (datetime.now() - timedelta(days=recent_days)).isoformat()
+        conditions.append("crawl_time >= ?")
+        params.append(cutoff)
     if ai_recommended_only:
         conditions.append("is_recommended = 1")
         conditions.append("analysis_source = ?")
@@ -100,11 +105,13 @@ def _load_filtered_records_from_conn(
     sort_by: str,
     sort_order: str,
     include_hidden: bool,
+    recent_days: int | None = None,
 ) -> list[dict]:
     where_clause, params = _build_query_conditions(
         filename=filename,
         ai_recommended_only=ai_recommended_only,
         keyword_recommended_only=keyword_recommended_only,
+        recent_days=recent_days,
     )
     order_clause = _sort_expression(sort_by, sort_order)
     rows = conn.execute(
@@ -272,6 +279,7 @@ async def query_result_records(
     page: int,
     limit: int,
     include_hidden: bool = False,
+    recent_days: int | None = None,
 ) -> tuple[int, list[dict]]:
     return await asyncio.to_thread(
         _query_result_records_sync,
@@ -283,6 +291,7 @@ async def query_result_records(
         page,
         limit,
         include_hidden,
+        recent_days,
     )
 
 
@@ -295,6 +304,7 @@ def _query_result_records_sync(
     page: int,
     limit: int,
     include_hidden: bool,
+    recent_days: int | None,
 ) -> tuple[int, list[dict]]:
     bootstrap_sqlite_storage()
     offset = max(page - 1, 0) * limit
@@ -307,6 +317,7 @@ def _query_result_records_sync(
             sort_by=sort_by,
             sort_order=sort_order,
             include_hidden=include_hidden,
+            recent_days=recent_days,
         )
     total = len(records)
     return total, records[offset: offset + limit]
@@ -320,6 +331,7 @@ async def load_all_result_records(
     sort_by: str,
     sort_order: str,
     include_hidden: bool = False,
+    recent_days: int | None = None,
 ) -> list[dict]:
     return await asyncio.to_thread(
         _load_all_result_records_sync,
@@ -329,6 +341,7 @@ async def load_all_result_records(
         sort_by,
         sort_order,
         include_hidden,
+        recent_days,
     )
 
 
@@ -339,6 +352,7 @@ def _load_all_result_records_sync(
     sort_by: str,
     sort_order: str,
     include_hidden: bool,
+    recent_days: int | None,
 ) -> list[dict]:
     bootstrap_sqlite_storage()
     with sqlite_connection() as conn:
@@ -350,6 +364,7 @@ def _load_all_result_records_sync(
             sort_by=sort_by,
             sort_order=sort_order,
             include_hidden=include_hidden,
+            recent_days=recent_days,
         )
 
 

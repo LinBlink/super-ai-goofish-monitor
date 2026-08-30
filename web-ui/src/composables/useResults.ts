@@ -32,12 +32,23 @@ export function useResults() {
   
   const STORAGE_KEY_FILTERS = 'resultFilters'
 
-  function loadPersistedFilters(): Required<Omit<GetResultContentParams, 'page' | 'limit'>> {
-    const defaults: Required<Omit<GetResultContentParams, 'page' | 'limit'>> = {
+  type ResultFilters = {
+    recommended_only: boolean
+    ai_recommended_only: boolean
+    keyword_recommended_only: boolean
+    include_hidden: boolean
+    recent_days: number | null
+    sort_by: 'crawl_time' | 'publish_time' | 'price' | 'keyword_hit_count' | 'smart'
+    sort_order: 'asc' | 'desc'
+  }
+
+  function loadPersistedFilters(): ResultFilters {
+    const defaults: ResultFilters = {
       recommended_only: false,
       ai_recommended_only: false,
       keyword_recommended_only: false,
       include_hidden: false,
+      recent_days: null,
       sort_by: 'crawl_time',
       sort_order: 'desc',
     }
@@ -48,7 +59,18 @@ export function useResults() {
     return defaults
   }
 
-  const filters = reactive<Required<Omit<GetResultContentParams, 'page' | 'limit'>>>(loadPersistedFilters())
+  const filters = reactive<ResultFilters>(loadPersistedFilters())
+
+  function buildContentParams(
+    source: ResultFilters & { page?: number; limit?: number }
+  ): GetResultContentParams {
+    const { recent_days, ...rest } = source
+    const params: GetResultContentParams = { ...rest }
+    if (recent_days !== null && recent_days !== undefined) {
+      params.recent_days = recent_days
+    }
+    return params
+  }
 
   const isLoading = ref(false)
   const error = ref<Error | null>(null)
@@ -99,11 +121,11 @@ export function useResults() {
     isLoading.value = true
     error.value = null
     try {
-      const data = await resultsApi.getResultContent(selectedFile.value, {
+      const data = await resultsApi.getResultContent(selectedFile.value, buildContentParams({
         ...filters,
         page: page.value,
         limit: limit.value,
-      })
+      }))
       results.value = data.items
       totalItems.value = data.total_items
     } catch (e) {
@@ -186,7 +208,7 @@ export function useResults() {
 
   function exportSelectedResults() {
     if (!selectedFile.value) return
-    resultsApi.downloadResultExport(selectedFile.value, { ...filters })
+    resultsApi.downloadResultExport(selectedFile.value, buildContentParams({ ...filters }))
   }
 
   async function deleteSelectedFile(filename?: string) {

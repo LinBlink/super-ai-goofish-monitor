@@ -6,6 +6,7 @@ export interface GetResultContentParams {
   ai_recommended_only?: boolean;
   keyword_recommended_only?: boolean;
   include_hidden?: boolean;
+  recent_days?: number;
   sort_by?: 'crawl_time' | 'publish_time' | 'price' | 'keyword_hit_count' | 'smart';
   sort_order?: 'asc' | 'desc';
   page?: number;

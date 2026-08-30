@@ -107,6 +107,7 @@ async function handleDeleteResults() {
       v-model:aiRecommendedOnly="filters.ai_recommended_only"
       v-model:keywordRecommendedOnly="filters.keyword_recommended_only"
       v-model:includeHidden="filters.include_hidden"
+      v-model:recentDays="filters.recent_days"
       v-model:sortBy="filters.sort_by"
       v-model:sortOrder="filters.sort_order"
       :is-loading="isLoading"
