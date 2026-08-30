@@ -38,20 +38,21 @@ function goPrompts() {
 </script>
 
 <template>
-  <header class="flex items-center justify-between px-6 h-16 bg-white/60 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-[100]">
+  <header class="relative flex items-center justify-between px-6 h-16 bg-white/70 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-[100]">
+    <div class="absolute inset-x-0 top-0 h-1 brand-gradient"></div>
     <!-- Brand Logo -->
     <RouterLink
       to="/dashboard"
       class="flex items-center gap-2 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       :aria-label="t('header.goHome')"
     >
-      <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:rotate-12">
-        <Zap class="w-5 h-5 text-white fill-white" />
+      <div class="brand-gradient flex h-9 w-9 items-center justify-center rounded-xl shadow-lg shadow-primary/30 transition-transform group-hover:rotate-12">
+        <Zap class="h-5 w-5 text-white fill-white" />
       </div>
-      <h1 class="text-lg font-black text-slate-800 tracking-tighter">
-        AI <span class="text-primary">Xianyu</span> Hunter
+      <h1 class="text-lg font-black tracking-tighter text-slate-800">
+        AI <span class="gradient-text">Xianyu</span> Hunter
       </h1>
-      <Badge variant="outline" class="ml-2 text-[10px] font-bold border-primary/20 text-primary bg-primary/5 uppercase tracking-widest hidden sm:flex">
+      <Badge class="ml-2 hidden bg-gradient-to-r from-primary to-violet-500 text-[10px] font-bold uppercase tracking-widest text-white sm:flex">
         PRO
       </Badge>
     </RouterLink>

@@ -7,6 +7,8 @@ import ResultsGrid from '@/components/results/ResultsGrid.vue'
 import ResultsInsightsPanel from '@/components/results/ResultsInsightsPanel.vue'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Layers } from 'lucide-vue-next'
 import {
   Dialog,
   DialogContent,
@@ -90,9 +92,7 @@ async function handleDeleteResults() {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">
-      {{ t('results.title') }}
-    </h1>
+    <PageHeader :title="t('results.title')" :description="t('results.description')" :icon="Layers" />
 
     <div v-if="error" class="app-alert-error mb-4" role="alert">
       <strong class="font-bold">{{ t('common.error') }}</strong>

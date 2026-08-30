@@ -13,7 +13,8 @@ import { listAccounts, type AccountItem } from '@/api/accounts'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toast'
-import { Play, Square } from 'lucide-vue-next'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Play, Square, ListTodo } from 'lucide-vue-next'
 import {
   Dialog,
   DialogContent,
@@ -248,11 +249,8 @@ onMounted(fetchAccountOptions)
 
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">
-        {{ t('tasks.title') }}
-      </h1>
-      <div class="flex items-center gap-2">
+    <PageHeader :title="t('tasks.title')" :icon="ListTodo">
+      <template #actions>
         <Button
           variant="outline"
           :disabled="isLoading || hasRunnableTasks === false"
@@ -272,8 +270,8 @@ onMounted(fetchAccountOptions)
           {{ t('tasks.stopAll') }}
         </Button>
         <TaskCreateDialog :account-options="accountOptions" @created="fetchTasks" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Edit Task Dialog -->
     <Dialog v-model:open="isEditDialogOpen">

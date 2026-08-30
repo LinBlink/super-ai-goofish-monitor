@@ -94,6 +94,14 @@ const enUS = {
     title: 'Dashboard',
     description: 'A live summary of tasks, results, and recent activity.',
     createTask: 'Create Monitoring Task',
+    stats: {
+      totalTasks: 'Monitored Tasks',
+      totalTasksHint: 'Total tasks currently configured',
+      priceTracked: 'Price Tracked',
+      priceTrackedHint: 'Tasks with collected price history',
+      samples: 'Total Samples',
+      samplesHint: 'Cumulative price-history samples',
+    },
     priceOverview: {
       title: 'Latest Historical Average Price by Task',
       description: 'Each task\'s latest average price within its price-history window, for quickly comparing market levels across keywords.',
@@ -105,6 +113,7 @@ const enUS = {
   },
   results: {
     title: 'Results',
+    description: 'Browse hits, insights, and price trends per task, with filtering, export, and blocking.',
     filters: {
       loadingTaskNames: 'Loading task names...',
       noResults: 'No results yet. Run a task first.',
@@ -199,6 +208,7 @@ const enUS = {
   },
   settings: {
     title: 'Settings',
+    description: 'Manage global configuration: AI models, notifications, account/proxy rotation, and scheduling.',
     tabs: {
       ai: 'AI Model',
       rotation: 'Rotation',

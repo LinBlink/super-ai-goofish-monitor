@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
+import { Terminal } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const { tasks } = useTasks()
@@ -107,7 +108,10 @@ async function handleClearLogs() {
     <div class="app-surface p-4">
       <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
-        <h1 class="text-2xl font-bold text-gray-800">{{ t('logs.title') }}</h1>
+        <div class="flex items-center gap-3">
+          <div class="page-icon"><Terminal class="h-6 w-6" /></div>
+          <h1 class="text-2xl font-black text-slate-800">{{ t('logs.title') }}</h1>
+        </div>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Label class="text-sm text-gray-600">{{ t('logs.task') }}</Label>
           <Select v-model="selectedTaskId">

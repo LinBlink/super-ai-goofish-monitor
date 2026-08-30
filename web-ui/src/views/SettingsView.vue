@@ -12,12 +12,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
+import Badge from '@/components/ui/badge/Badge.vue'
 import { getPromptContent, listPrompts, updatePrompt } from '@/api/prompts'
 import NotificationSettingsPanel from '@/components/settings/NotificationSettingsPanel.vue'
 import RotationSettingsPanel from '@/components/settings/RotationSettingsPanel.vue'
 import BrowserSettingsPanel from '@/components/settings/BrowserSettingsPanel.vue'
 import SchedulerSettingsPanel from '@/components/settings/SchedulerSettingsPanel.vue'
 import GlobalBlacklistPanel from '@/components/settings/GlobalBlacklistPanel.vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Settings2 } from 'lucide-vue-next'
 const { t } = useI18n()
 
 const {
@@ -242,7 +245,7 @@ watch(selectedPrompt, async (value) => {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ t('settings.title') }}</h1>
+    <PageHeader :title="t('settings.title')" :description="t('settings.description')" :icon="Settings2" />
     
     <div v-if="error" class="app-alert-error mb-4" role="alert">
       {{ error.message }}
@@ -277,8 +280,8 @@ watch(selectedPrompt, async (value) => {
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-medium">{{ t('settings.ai.modelIndex', { n: idx + 1 }) }}</span>
-                  <span v-if="idx === 0" class="rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">{{ t('settings.ai.primary') }}</span>
-                  <span v-else class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{{ t('settings.ai.fallback') }}</span>
+                  <Badge v-if="idx === 0" variant="success">{{ t('settings.ai.primary') }}</Badge>
+                  <Badge v-else variant="secondary">{{ t('settings.ai.fallback') }}</Badge>
                 </div>
                 <Button
                   v-if="(aiSettings.models || []).length > 1"

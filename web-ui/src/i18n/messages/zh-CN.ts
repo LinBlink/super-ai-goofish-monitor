@@ -94,6 +94,14 @@ const zhCN = {
     title: '监控概览',
     description: '这里展示任务、结果与最近活动的真实汇总。',
     createTask: '开始新监测',
+    stats: {
+      totalTasks: '监测任务',
+      totalTasksHint: '当前已配置的任务总数',
+      priceTracked: '价格跟踪',
+      priceTrackedHint: '已积累价格历史的任务数',
+      samples: '样本总量',
+      samplesHint: '价格历史样本累计件数',
+    },
     priceOverview: {
       title: '各任务最新历史均价',
       description: '每个任务在其价格历史窗口内的最新均价，可用于快速比较不同关键词的市场行情。',
@@ -105,6 +113,7 @@ const zhCN = {
   },
   results: {
     title: '结果查看',
+    description: '浏览各任务的命中结果、洞察与价格走势，支持筛选、导出与屏蔽。',
     filters: {
       loadingTaskNames: '加载任务名称...',
       noResults: '暂无结果，请先运行任务',
@@ -199,6 +208,7 @@ const zhCN = {
   },
   settings: {
     title: '系统设置',
+    description: '管理 AI 模型、通知渠道、账号代理轮换与调度策略等全局配置。',
     tabs: {
       ai: 'AI 模型',
       rotation: 'IP 轮换',

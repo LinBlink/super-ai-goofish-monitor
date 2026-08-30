@@ -39,40 +39,41 @@ const connectionTone = computed(() =>
 </script>
 
 <template>
-  <nav class="space-y-1">
+  <nav class="space-y-1.5">
     <RouterLink
       v-for="item in navItems"
       :key="item.to"
       :to="item.to"
       v-slot="{ isActive }"
-      class="group relative flex items-center px-4 py-3 rounded-xl transition-all duration-200 overflow-hidden"
+      class="group relative flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 overflow-hidden"
       @click="emit('navigate')"
     >
       <!-- Active Background Effect -->
-      <div 
-        v-if="isActive" 
-        class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent z-0"
+      <div
+        v-if="isActive"
+        class="absolute inset-0 brand-gradient opacity-100 z-0"
       ></div>
-      <div 
-        v-if="isActive" 
-        class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
+      <div
+        v-if="isActive"
+        class="absolute inset-0 bg-white/10 z-0"
       ></div>
 
       <div class="relative z-10 flex items-center w-full">
-        <component 
-          :is="item.icon" 
-          class="w-5 h-5 mr-3 transition-colors"
-          :class="isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'"
-        />
-        <span 
+        <div
+          class="mr-3 flex h-9 w-9 items-center justify-center rounded-xl transition-colors"
+          :class="isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'"
+        >
+          <component :is="item.icon" class="w-5 h-5" />
+        </div>
+        <span
           class="text-sm font-bold transition-colors flex-grow"
-          :class="isActive ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-700'"
+          :class="isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-700'"
         >
           {{ item.label }}
         </span>
-        <ChevronRight 
+        <ChevronRight
           v-if="isActive"
-          class="w-4 h-4 text-primary animate-in fade-in slide-in-from-left-2"
+          class="w-4 h-4 text-white animate-in fade-in slide-in-from-left-2"
         />
       </div>
     </RouterLink>

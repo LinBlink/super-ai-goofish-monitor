@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toast'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Users } from 'lucide-vue-next'
 const { t } = useI18n()
 
 const accounts = ref<AccountItem[]>([])
@@ -123,13 +125,11 @@ onMounted(fetchAccounts)
 
 <template>
   <div>
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-800">{{ t('accounts.title') }}</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ t('accounts.description') }}</p>
-      </div>
-      <Button class="w-full sm:w-auto" @click="openCreateDialog">{{ t('accounts.add') }}</Button>
-    </div>
+    <PageHeader :title="t('accounts.title')" :description="t('accounts.description')" :icon="Users">
+      <template #actions>
+        <Button variant="gradient" class="w-full sm:w-auto" @click="openCreateDialog">{{ t('accounts.add') }}</Button>
+      </template>
+    </PageHeader>
 
     <Card class="app-surface mb-6 border-none">
       <CardHeader>

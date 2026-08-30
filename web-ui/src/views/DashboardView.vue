@@ -6,11 +6,22 @@ import { useDashboard } from '@/composables/useDashboard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PriceTrendChart from '@/components/results/PriceTrendChart.vue'
-import { LayoutDashboard, Wallet } from 'lucide-vue-next'
+import { LayoutDashboard, Wallet, ListTodo, TrendingUp, Database } from 'lucide-vue-next'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { StatCard } from '@/components/ui/stat-card'
 
 const router = useRouter()
 const { t } = useI18n()
 const { taskSummaries, error } = useDashboard()
+
+const stats = computed(() => {
+  const list = taskSummaries.value
+  return {
+    total: list.length,
+    withPrice: list.filter((t) => t.history_avg_price !== null).length,
+    samples: list.reduce((sum, t) => sum + (t.history_sample_count || 0), 0),
+  }
+})
 
 const priceOverviewRows = computed(() =>
   [...taskSummaries.value].sort((a, b) => {
@@ -37,26 +48,47 @@ function goCreateTask() {
 
 <template>
   <div class="space-y-8 animate-fade-in">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-          <LayoutDashboard class="w-8 h-8 text-primary" />
-          {{ t('dashboard.title') }}
-        </h1>
-        <p class="text-slate-500 mt-1 font-medium">
-          {{ t('dashboard.description') }}
-        </p>
-      </div>
-      <div class="flex items-center gap-3">
-        <Button class="shadow-md shadow-primary/20" @click="goCreateTask">
+    <PageHeader
+      :title="t('dashboard.title')"
+      :description="t('dashboard.description')"
+      :icon="LayoutDashboard"
+    >
+      <template #actions>
+        <Button variant="gradient" @click="goCreateTask">
           {{ t('dashboard.createTask') }}
         </Button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
+
     <div v-if="error" class="app-alert-error" role="alert">
       {{ error.message }}
     </div>
-    <Card class="app-surface border-none">
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <StatCard
+        :label="t('dashboard.stats.totalTasks')"
+        :value="String(stats.total)"
+        :icon="ListTodo"
+        tone="primary"
+        :hint="t('dashboard.stats.totalTasksHint')"
+      />
+      <StatCard
+        :label="t('dashboard.stats.priceTracked')"
+        :value="String(stats.withPrice)"
+        :icon="TrendingUp"
+        tone="emerald"
+        :hint="t('dashboard.stats.priceTrackedHint')"
+      />
+      <StatCard
+        :label="t('dashboard.stats.samples')"
+        :value="String(stats.samples)"
+        :icon="Database"
+        tone="sky"
+        :hint="t('dashboard.stats.samplesHint')"
+      />
+    </div>
+
+    <Card class="app-card border-none">
       <CardHeader class="border-b border-slate-100/60 pb-5">
         <CardTitle class="text-lg font-bold text-slate-800 flex items-center gap-2">
           <Wallet class="w-5 h-5 text-emerald-500" />
@@ -72,8 +104,8 @@ function goCreateTask() {
           <div
             v-for="item in priceOverviewRows"
             :key="item.task_id ?? item.task_name"
-            class="rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm transition-colors"
-            :class="item.filename ? 'hover:border-primary/40 cursor-pointer' : ''"
+            class="app-card cursor-pointer border-none p-4"
+            :class="item.filename ? 'hover:border-primary/40' : 'cursor-default'"
             @click="openTaskPrice(item)"
           >
             <div class="flex items-center justify-between gap-4">
