@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSettings } from '@/composables/useSettings'
-import type { NotificationSettingsUpdate, NotificationTestResponse } from '@/api/settings'
+import type { NotificationSettingsUpdate, NotificationTestResponse, AIModelConfig } from '@/api/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,7 @@ import { getPromptContent, listPrompts, updatePrompt } from '@/api/prompts'
 import NotificationSettingsPanel from '@/components/settings/NotificationSettingsPanel.vue'
 import RotationSettingsPanel from '@/components/settings/RotationSettingsPanel.vue'
 import BrowserSettingsPanel from '@/components/settings/BrowserSettingsPanel.vue'
+import SchedulerSettingsPanel from '@/components/settings/SchedulerSettingsPanel.vue'
 import GlobalBlacklistPanel from '@/components/settings/GlobalBlacklistPanel.vue'
 const { t } = useI18n()
 
@@ -24,6 +25,7 @@ const {
   aiSettings,
   rotationSettings,
   browserSettings,
+  schedulerSettings,
   systemStatus,
   globalBlacklistKeywords,
   isLoading,
@@ -36,13 +38,17 @@ const {
   saveAiSettings,
   saveRotationSettings,
   saveBrowserSettings,
+  saveSchedulerSettings,
   saveGlobalBlacklist,
   testAiConnection
 } = useSettings()
 
 const activeTab = ref('ai')
 const route = useRoute()
-const validTabs = new Set(['notifications', 'ai', 'rotation', 'browser', 'blacklist', 'status', 'prompts'])
+const validTabs = new Set(['notifications', 'ai', 'rotation', 'browser', 'scheduler', 'blacklist', 'status', 'prompts'])
+
+const testingIndex = ref(-1)
+const testMessages = ref<Record<number, { success: boolean; message: string }>>({})
 
 const promptFiles = ref<string[]>([])
 const selectedPrompt = ref<string | null>(null)
@@ -108,6 +114,15 @@ async function handleSaveBrowser() {
   }
 }
 
+async function handleSaveScheduler(paused: boolean) {
+  try {
+    await saveSchedulerSettings(paused)
+    notifySuccess(paused ? t('scheduler.paused') : t('scheduler.resumed'))
+  } catch (e) {
+    notifyError(t('scheduler.saveFailed'), (e as Error).message)
+  }
+}
+
 async function handleSaveGlobalBlacklist(keywords: string[]) {
   try {
     await saveGlobalBlacklist(keywords)
@@ -117,13 +132,36 @@ async function handleSaveGlobalBlacklist(keywords: string[]) {
   }
 }
 
-async function handleTestAi() {
+async function handleTestAi(model: AIModelConfig, idx: number) {
+  testingIndex.value = idx
+  testMessages.value[idx] = { success: false, message: t('settings.ai.testing') }
   try {
-    const res = await testAiConnection()
-    notifySuccess(t('settings.ai.testSuccess'), res.message)
+    const res = await testAiConnection(model)
+    testMessages.value[idx] = { success: res.success, message: res.message }
+    if (res.success) notifySuccess(t('settings.ai.testSuccess'), res.message)
+    else notifyError(t('settings.ai.testFailed'), res.message)
   } catch (e) {
+    testMessages.value[idx] = { success: false, message: (e as Error).message }
     notifyError(t('settings.ai.testFailed'), (e as Error).message)
+  } finally {
+    testingIndex.value = -1
   }
+}
+
+function addModel() {
+  if (!aiSettings.value.models) aiSettings.value.models = []
+  aiSettings.value.models.push({
+    base_url: '',
+    model_name: '',
+    api_key: '',
+    proxy_url: '',
+    enable_response_format: true,
+    enable_thinking: false,
+  })
+}
+
+function removeModel(idx: number) {
+  if (aiSettings.value.models) aiSettings.value.models.splice(idx, 1)
 }
 
 async function fetchPrompts() {
@@ -215,6 +253,7 @@ watch(selectedPrompt, async (value) => {
         <TabsTrigger class="shrink-0" value="ai">{{ t('settings.tabs.ai') }}</TabsTrigger>
       <TabsTrigger class="shrink-0" value="rotation">{{ t('settings.tabs.rotation') }}</TabsTrigger>
       <TabsTrigger class="shrink-0" value="browser">{{ t('settings.tabs.browser') }}</TabsTrigger>
+      <TabsTrigger class="shrink-0" value="scheduler">{{ t('scheduler.tab') }}</TabsTrigger>
       <TabsTrigger class="shrink-0" value="blacklist">{{ t('settings.tabs.blacklist') }}</TabsTrigger>
         <TabsTrigger class="shrink-0" value="notifications">{{ t('settings.tabs.notifications') }}</TabsTrigger>
         <TabsTrigger class="shrink-0" value="status">{{ t('settings.tabs.status') }}</TabsTrigger>
@@ -229,35 +268,73 @@ watch(selectedPrompt, async (value) => {
             <CardDescription>{{ t('settings.ai.description') }}</CardDescription>
           </CardHeader>
           <CardContent v-if="isReady" class="space-y-4">
-            <div class="grid gap-2">
-              <Label>API Base URL</Label>
-              <Input v-model="aiSettings.OPENAI_BASE_URL" placeholder="https://api.openai.com/v1" />
+            <p class="text-xs text-gray-500">{{ t('settings.ai.orderHint') }}</p>
+            <div
+              v-for="(model, idx) in (aiSettings.models || [])"
+              :key="idx"
+              class="rounded-lg border p-3 space-y-3"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium">{{ t('settings.ai.modelIndex', { n: idx + 1 }) }}</span>
+                  <span v-if="idx === 0" class="rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">{{ t('settings.ai.primary') }}</span>
+                  <span v-else class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{{ t('settings.ai.fallback') }}</span>
+                </div>
+                <Button
+                  v-if="(aiSettings.models || []).length > 1"
+                  variant="ghost"
+                  size="sm"
+                  @click="removeModel(idx)"
+                >{{ t('settings.ai.remove') }}</Button>
+              </div>
+              <div class="grid gap-2">
+                <Label>API Base URL</Label>
+                <Input v-model="model.base_url" placeholder="https://api.openai.com/v1" />
+              </div>
+              <div class="grid gap-2">
+                <Label>API Key</Label>
+                <Input v-model="model.api_key" type="password" :placeholder="t('settings.ai.keyPlaceholder')" />
+              </div>
+              <div class="grid gap-2">
+                <Label>{{ t('settings.ai.modelName') }}</Label>
+                <Input v-model="model.model_name" placeholder="gpt-3.5-turbo" />
+              </div>
+              <div class="grid gap-2">
+                <Label>{{ t('settings.ai.proxy') }}</Label>
+                <Input v-model="model.proxy_url" placeholder="http://127.0.0.1:7890" />
+              </div>
+              <div class="flex flex-wrap items-center gap-4">
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" v-model="model.enable_response_format" />
+                  {{ t('settings.ai.enableResponseFormat') }}
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" v-model="model.enable_thinking" />
+                  {{ t('settings.ai.enableThinking') }}
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  :disabled="isSaving || testingIndex === idx"
+                  @click="handleTestAi(model, idx)"
+                >{{ testingIndex === idx ? t('settings.ai.testing') : t('settings.ai.testConnection') }}</Button>
+              </div>
+              <p
+                v-if="testMessages[idx]"
+                :class="testMessages[idx].success ? 'text-xs text-green-600' : 'text-xs text-red-600'"
+              >{{ testMessages[idx].message }}</p>
             </div>
-            <div class="grid gap-2">
-              <Label>API Key</Label>
-              <Input
-                v-model="aiSettings.OPENAI_API_KEY"
-                type="password"
-                :placeholder="t('settings.ai.keyPlaceholder')"
-              />
-              <p class="text-xs text-gray-500">
-                {{ systemStatus?.env_file.openai_api_key_set ? t('settings.ai.keyConfigured') : t('settings.ai.keyMissing') }}
-              </p>
-            </div>
-            <div class="grid gap-2">
-              <Label>{{ t('settings.ai.modelName') }}</Label>
-              <Input v-model="aiSettings.OPENAI_MODEL_NAME" placeholder="gpt-3.5-turbo" />
-            </div>
-            <div class="grid gap-2">
-              <Label>{{ t('settings.ai.proxy') }}</Label>
-              <Input v-model="aiSettings.PROXY_URL" placeholder="http://127.0.0.1:7890" />
+            <Button variant="outline" @click="addModel">+ {{ t('settings.ai.addModel') }}</Button>
+
+            <div class="flex items-center gap-2 pt-2">
+              <input type="checkbox" v-model="aiSettings.SKIP_AI_ANALYSIS" id="skip-ai" />
+              <Label for="skip-ai">{{ t('settings.ai.skipAnalysis') }}</Label>
             </div>
           </CardContent>
           <CardContent v-else class="py-8 text-sm text-gray-500">
             {{ t('settings.ai.loading') }}
           </CardContent>
           <CardFooter v-if="isReady" class="flex gap-2">
-            <Button variant="outline" @click="handleTestAi" :disabled="isSaving">{{ t('settings.ai.testConnection') }}</Button>
             <Button @click="handleSaveAi" :disabled="isSaving">{{ t('settings.ai.save') }}</Button>
           </CardFooter>
         </Card>
@@ -280,6 +357,16 @@ watch(selectedPrompt, async (value) => {
           :is-ready="isReady"
           :is-saving="isSaving"
           @save="handleSaveBrowser"
+        />
+      </TabsContent>
+
+      <!-- Scheduler Tab -->
+      <TabsContent value="scheduler">
+        <SchedulerSettingsPanel
+          :paused="schedulerSettings.paused"
+          :is-ready="isReady"
+          :is-saving="isSaving"
+          @save="handleSaveScheduler"
         />
       </TabsContent>
 

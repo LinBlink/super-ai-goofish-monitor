@@ -17,8 +17,8 @@ def build_analysis_text_prompt(
 ) -> str:
     note = "" if include_images else f"\n{TEXT_ONLY_ANALYSIS_NOTE}\n"
     value_note = (
-        "\n如果商品 JSON 中包含“价格参考”或 price_insight，请结合价格位置、历史走势、"
-        "配置、成色、附件、卖家信息综合判断性价比。"
+        "\n如果商品 JSON 中包含“价格参考”或 price_insight，请结合历史走势、"
+        "配置、成色、附件、卖家信息综合判断性价比。不要因为价格过高不推荐此商品，价格低到离谱可以不推荐。"
         "你可以额外输出可选字段 value_score(0-100) 和 value_summary，"
         "但必须保留原有 is_recommended/reason 等字段。\n"
     )

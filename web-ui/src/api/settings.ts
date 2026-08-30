@@ -81,11 +81,18 @@ export interface NotificationTestResponse {
   }>
 }
 
+export interface AIModelConfig {
+  api_key?: string
+  base_url: string
+  model_name: string
+  enable_response_format?: boolean
+  enable_thinking?: boolean
+  proxy_url?: string
+}
+
 export interface AiSettings {
-  OPENAI_API_KEY?: string
-  OPENAI_BASE_URL?: string
-  OPENAI_MODEL_NAME?: string
-  PROXY_URL?: string
+  models: AIModelConfig[]
+  SKIP_AI_ANALYSIS?: boolean
 }
 
 export interface RotationSettings {
@@ -103,6 +110,11 @@ export interface RotationSettings {
 
 export interface BrowserSettings {
   USE_SYSTEM_CHROME?: boolean
+}
+
+export interface SchedulerSettings {
+  paused: boolean
+  scheduler_running: boolean
 }
 
 export interface SystemStatus {
@@ -196,11 +208,23 @@ export async function updateBrowserSettings(settings: BrowserSettings): Promise<
   })
 }
 
-export async function testAiSettings(settings: AiSettings): Promise<{ success: boolean; message: string; response?: string }> {
+export async function getSchedulerSettings(): Promise<SchedulerSettings> {
+  return await http('/api/settings/scheduler')
+}
+
+export async function updateSchedulerSettings(paused: boolean): Promise<{ message: string; paused: boolean }> {
+  return await http('/api/settings/scheduler', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paused })
+  })
+}
+
+export async function testAiSettings(model: AIModelConfig): Promise<{ success: boolean; message: string; response?: string }> {
   return await http('/api/settings/ai/test', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(settings)
+    body: JSON.stringify(model)
   })
 }
 

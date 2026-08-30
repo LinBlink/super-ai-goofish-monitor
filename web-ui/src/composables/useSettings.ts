@@ -5,16 +5,19 @@ import type {
   NotificationSettingsUpdate,
   NotificationTestResponse,
   AiSettings,
+  AIModelConfig,
   RotationSettings,
   BrowserSettings,
+  SchedulerSettings,
   SystemStatus
 } from '@/api/settings'
 
 export function useSettings() {
   const notificationSettings = ref<NotificationSettings>({})
-  const aiSettings = ref<AiSettings>({})
+  const aiSettings = ref<AiSettings>({ models: [] })
   const rotationSettings = ref<RotationSettings>({})
   const browserSettings = ref<BrowserSettings>({})
+  const schedulerSettings = ref<SchedulerSettings>({ paused: false, scheduler_running: false })
   const systemStatus = ref<SystemStatus | null>(null)
   const globalBlacklistKeywords = ref<string[]>([])
   const isReady = ref(false)
@@ -27,20 +30,29 @@ export function useSettings() {
     isLoading.value = true
     error.value = null
     try {
-      const [notif, ai, rotation, browser, status, blacklist] = await Promise.all([
+      const [notif, ai, rotation, browser, status, blacklist, scheduler] = await Promise.all([
         settingsApi.getNotificationSettings(),
         settingsApi.getAiSettings(),
         settingsApi.getRotationSettings(),
         settingsApi.getBrowserSettings(),
         settingsApi.getSystemStatus(),
-        settingsApi.getGlobalBlacklist()
+        settingsApi.getGlobalBlacklist(),
+        settingsApi.getSchedulerSettings()
       ])
       notificationSettings.value = notif
-      aiSettings.value = ai
+      aiSettings.value = {
+        models: (ai.models || []).map((m) => ({
+          ...m,
+          api_key: m.api_key ?? '',
+          proxy_url: m.proxy_url ?? '',
+        })),
+        SKIP_AI_ANALYSIS: ai.SKIP_AI_ANALYSIS,
+      }
       rotationSettings.value = rotation
       browserSettings.value = browser
       systemStatus.value = status
       globalBlacklistKeywords.value = blacklist.keywords
+      schedulerSettings.value = scheduler
     } catch (e) {
       if (e instanceof Error) error.value = e
     } finally {
@@ -98,18 +110,22 @@ export function useSettings() {
   async function saveAiSettings() {
     isSaving.value = true
     try {
-      const payload = { ...aiSettings.value }
-      const apiKey = (payload.OPENAI_API_KEY || '').trim()
-      if (apiKey) {
-        payload.OPENAI_API_KEY = apiKey
-      } else {
-        delete payload.OPENAI_API_KEY
+      const models = (aiSettings.value.models || []).map((m) => ({
+        ...m,
+        api_key: (m.api_key || '').trim() ? (m.api_key || '').trim() : undefined,
+        base_url: (m.base_url || '').trim(),
+        model_name: (m.model_name || '').trim(),
+        proxy_url: m.proxy_url ? m.proxy_url.trim() : undefined,
+        enable_response_format: m.enable_response_format !== false,
+        enable_thinking: m.enable_thinking === true,
+      }))
+      const payload: AiSettings = {
+        models,
+        SKIP_AI_ANALYSIS: aiSettings.value.SKIP_AI_ANALYSIS,
       }
       await settingsApi.updateAiSettings(payload)
-      if (aiSettings.value.OPENAI_API_KEY) {
-        aiSettings.value.OPENAI_API_KEY = ''
-      }
-      // Refresh status
+      // 保存后清空本地明文密钥，避免误留存
+      aiSettings.value.models = models.map((m) => ({ ...m, api_key: '' }))
       systemStatus.value = await settingsApi.getSystemStatus()
     } catch (e) {
       if (e instanceof Error) error.value = e
@@ -143,6 +159,19 @@ export function useSettings() {
     }
   }
 
+  async function saveSchedulerSettings(paused: boolean) {
+    isSaving.value = true
+    try {
+      const result = await settingsApi.updateSchedulerSettings(paused)
+      schedulerSettings.value = { ...schedulerSettings.value, paused: result.paused }
+    } catch (e) {
+      if (e instanceof Error) error.value = e
+      throw e
+    } finally {
+      isSaving.value = false
+    }
+  }
+
   async function saveGlobalBlacklist(keywords: string[]) {
     isSaving.value = true
     try {
@@ -156,15 +185,15 @@ export function useSettings() {
     }
   }
 
-  async function testAiConnection() {
+  async function testAiConnection(model: AIModelConfig) {
     isSaving.value = true
     try {
-      const payload = { ...aiSettings.value }
-      const apiKey = (payload.OPENAI_API_KEY || '').trim()
-      if (apiKey) {
-        payload.OPENAI_API_KEY = apiKey
-      } else {
-        delete payload.OPENAI_API_KEY
+      const payload: AIModelConfig = {
+        ...model,
+        api_key: (model.api_key || '').trim() ? (model.api_key || '').trim() : undefined,
+        base_url: (model.base_url || '').trim(),
+        model_name: (model.model_name || '').trim(),
+        proxy_url: model.proxy_url ? model.proxy_url.trim() : undefined,
       }
       const res = await settingsApi.testAiSettings(payload)
       return res
@@ -183,6 +212,7 @@ export function useSettings() {
     aiSettings,
     rotationSettings,
     browserSettings,
+    schedulerSettings,
     systemStatus,
     globalBlacklistKeywords,
     isLoading,
@@ -195,6 +225,7 @@ export function useSettings() {
     saveAiSettings,
     saveRotationSettings,
     saveBrowserSettings,
+    saveSchedulerSettings,
     saveGlobalBlacklist,
     testAiConnection,
     refreshStatus,

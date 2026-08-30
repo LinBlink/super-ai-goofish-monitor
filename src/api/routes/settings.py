@@ -1,14 +1,15 @@
 """
 设置管理路由
 """
+import json
 import os
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from src.api.dependencies import get_process_service
+from src.api.dependencies import get_process_service, get_scheduler_service
 from src.infrastructure.config.env_manager import env_manager
 from src.infrastructure.config.settings import (
     AISettings,
@@ -37,6 +38,7 @@ from src.services.notification_config_service import (
 )
 from src.services.notification_service import build_notification_service
 from src.services.process_service import ProcessService
+from src.services.scheduler_service import SchedulerService
 from src.services.result_storage_service import (
     load_global_blacklist_keywords,
     save_global_blacklist_keywords,
@@ -45,7 +47,7 @@ from src.services.result_storage_service import (
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 AI_TEST_PROMPT = "Reply with OK only."
-AI_TEST_MAX_OUTPUT_TOKENS = 32
+AI_TEST_MAX_OUTPUT_TOKENS = 1024
 
 
 def _reload_env() -> None:
@@ -115,14 +117,22 @@ class NotificationTestRequest(BaseModel):
     settings: NotificationSettingsModel = Field(default_factory=NotificationSettingsModel)
 
 
-class AISettingsModel(BaseModel):
-    """AI设置模型"""
+class AIModelConfigModel(BaseModel):
+    """单个 AI 模型配置（有序列表中的一项）。第一个为主模型，其余为兜底模型。"""
 
-    OPENAI_API_KEY: Optional[str] = None
-    OPENAI_BASE_URL: Optional[str] = None
-    OPENAI_MODEL_NAME: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: str
+    model_name: str
+    enable_response_format: Optional[bool] = True
+    enable_thinking: Optional[bool] = False
+    proxy_url: Optional[str] = None
+
+
+class AISettingsModel(BaseModel):
+    """AI设置模型（支持多模型，第一个为主模型）"""
+
+    models: List[AIModelConfigModel] = Field(default_factory=list)
     SKIP_AI_ANALYSIS: Optional[bool] = None
-    PROXY_URL: Optional[str] = None
 
 
 class GlobalBlacklistRequest(BaseModel):
@@ -241,6 +251,12 @@ class BrowserSettingsModel(BaseModel):
     USE_SYSTEM_CHROME: Optional[bool] = None
 
 
+class SchedulerSettingsModel(BaseModel):
+    """调度相关设置"""
+
+    paused: Optional[bool] = None
+
+
 @router.get("/browser")
 async def get_browser_settings():
     return {
@@ -264,6 +280,39 @@ async def update_browser_settings(settings: BrowserSettingsModel):
     return {"message": "浏览器设置已成功更新"}
 
 
+class SchedulerSettingsResponse(BaseModel):
+    paused: bool
+    scheduler_running: bool
+
+
+@router.get("/scheduler")
+async def get_scheduler_settings(
+    scheduler: SchedulerService = Depends(get_scheduler_service),
+) -> SchedulerSettingsResponse:
+    return SchedulerSettingsResponse(
+        paused=_env_bool("SCHEDULER_PAUSED", False),
+        scheduler_running=scheduler.scheduler.running,
+    )
+
+
+@router.put("/scheduler")
+async def update_scheduler_settings(
+    settings: SchedulerSettingsModel,
+    scheduler: SchedulerService = Depends(get_scheduler_service),
+):
+    if settings.paused is None:
+        raise HTTPException(status_code=422, detail="缺少 paused 字段")
+
+    success = env_manager.update_values(
+        {"SCHEDULER_PAUSED": _normalize_bool_value(settings.paused)}
+    )
+    if not success:
+        raise HTTPException(status_code=500, detail="更新调度设置失败")
+
+    scheduler.set_paused(settings.paused)
+    return {"message": "调度暂停状态已更新", "paused": settings.paused}
+
+
 @router.get("/global-blacklist")
 async def get_global_blacklist():
     keywords = await load_global_blacklist_keywords()
@@ -283,10 +332,12 @@ async def get_system_status(
     state_file = scraper_settings.state_file
     login_state_exists = os.path.exists(state_file)
     env_file_exists = os.path.exists(env_manager.env_file)
-    openai_api_key = env_manager.get_value("OPENAI_API_KEY", "")
-    openai_base_url = env_manager.get_value("OPENAI_BASE_URL", "")
-    openai_model_name = env_manager.get_value("OPENAI_MODEL_NAME", "")
     ai_settings = AISettings()
+    model_configs = ai_settings.models()
+    primary_model = model_configs[0] if model_configs else {}
+    openai_api_key = primary_model.get("api_key") or env_manager.get_value("OPENAI_API_KEY", "")
+    openai_base_url = primary_model.get("base_url") or env_manager.get_value("OPENAI_BASE_URL", "")
+    openai_model_name = primary_model.get("model_name") or env_manager.get_value("OPENAI_MODEL_NAME", "")
     notification_settings = load_notification_settings()
     running_task_ids = [
         task_id
@@ -318,27 +369,78 @@ async def get_system_status(
 
 @router.get("/ai")
 async def get_ai_settings():
+    ai_settings = AISettings()
+    models = []
+    for cfg in ai_settings.models():
+        models.append({
+            # 出于安全考虑不回显密钥；前端留空表示"不修改"。
+            "api_key": None,
+            "base_url": cfg.get("base_url"),
+            "model_name": cfg.get("model_name"),
+            "enable_response_format": cfg.get("enable_response_format", True),
+            "enable_thinking": cfg.get("enable_thinking", False),
+            "proxy_url": cfg.get("proxy_url"),
+        })
     return {
-        "OPENAI_BASE_URL": env_manager.get_value("OPENAI_BASE_URL", ""),
-        "OPENAI_MODEL_NAME": env_manager.get_value("OPENAI_MODEL_NAME", ""),
+        "models": models,
         "SKIP_AI_ANALYSIS": env_manager.get_value("SKIP_AI_ANALYSIS", "false").lower() == "true",
-        "PROXY_URL": env_manager.get_value("PROXY_URL", ""),
     }
 
 
 @router.put("/ai")
 async def update_ai_settings(settings: AISettingsModel):
-    updates = {}
-    if settings.OPENAI_API_KEY is not None:
-        updates["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
-    if settings.OPENAI_BASE_URL is not None:
-        updates["OPENAI_BASE_URL"] = settings.OPENAI_BASE_URL
-    if settings.OPENAI_MODEL_NAME is not None:
-        updates["OPENAI_MODEL_NAME"] = settings.OPENAI_MODEL_NAME
+    updates: Dict[str, str] = {}
     if settings.SKIP_AI_ANALYSIS is not None:
-        updates["SKIP_AI_ANALYSIS"] = str(settings.SKIP_AI_ANALYSIS).lower()
-    if settings.PROXY_URL is not None:
-        updates["PROXY_URL"] = settings.PROXY_URL
+        updates["SKIP_AI_ANALYSIS"] = _normalize_bool_value(settings.SKIP_AI_ANALYSIS)
+
+    # 读取已存在的密钥，便于前端留空时保留原值（不回显、不覆盖）。
+    existing_models: List[Dict[str, Any]] = []
+    raw_existing = env_manager.get_value("AI_MODELS", "")
+    if raw_existing:
+        try:
+            parsed = json.loads(raw_existing)
+            if isinstance(parsed, list):
+                existing_models = [m for m in parsed if isinstance(m, dict)]
+        except (json.JSONDecodeError, TypeError):
+            existing_models = []
+
+    cleaned_models: List[Dict[str, Any]] = []
+    for idx, m in enumerate(settings.models):
+        if not m.base_url or not m.model_name:
+            continue
+        # 若本次未提供密钥（前端留空），沿用同序号已存密钥。
+        api_key = m.api_key or None
+        if not api_key and idx < len(existing_models):
+            api_key = existing_models[idx].get("api_key") or None
+        cleaned_models.append({
+            "api_key": api_key,
+            "base_url": m.base_url,
+            "model_name": m.model_name,
+            "enable_response_format": bool(m.enable_response_format),
+            "enable_thinking": bool(m.enable_thinking),
+            "proxy_url": m.proxy_url or None,
+        })
+
+    if cleaned_models:
+        updates["AI_MODELS"] = json.dumps(cleaned_models, ensure_ascii=False)
+        # 同步主模型到传统 OPENAI_* 变量，兼容旧代码/脚本
+        primary = cleaned_models[0]
+        updates["OPENAI_API_KEY"] = primary.get("api_key") or ""
+        updates["OPENAI_BASE_URL"] = primary.get("base_url") or ""
+        updates["OPENAI_MODEL_NAME"] = primary.get("model_name") or ""
+        updates["ENABLE_RESPONSE_FORMAT"] = _normalize_bool_value(
+            primary.get("enable_response_format", True)
+        )
+        updates["ENABLE_THINKING"] = _normalize_bool_value(primary.get("enable_thinking", False))
+        updates["PROXY_URL"] = primary.get("proxy_url") or ""
+    else:
+        updates["AI_MODELS"] = ""
+        updates["OPENAI_API_KEY"] = ""
+        updates["OPENAI_BASE_URL"] = ""
+        updates["OPENAI_MODEL_NAME"] = ""
+        updates["ENABLE_RESPONSE_FORMAT"] = "true"
+        updates["ENABLE_THINKING"] = "false"
+        updates["PROXY_URL"] = ""
 
     success = env_manager.update_values(updates)
     if not success:
@@ -348,35 +450,26 @@ async def update_ai_settings(settings: AISettingsModel):
 
 
 @router.post("/ai/test")
-async def test_ai_settings(settings: dict):
-    """测试AI模型设置是否有效"""
+async def test_ai_settings(model: AIModelConfigModel):
+    """测试指定 AI 模型连接是否可用（每个模型均可单独测试）。"""
     try:
         from openai import OpenAI
         import httpx
 
-        stored_api_key = env_manager.get_value("OPENAI_API_KEY", "")
-        submitted_api_key = settings.get("OPENAI_API_KEY", "")
-        api_key = submitted_api_key or stored_api_key
-
         client_params = {
-            "api_key": api_key,
-            "base_url": settings.get("OPENAI_BASE_URL", ""),
+            "api_key": model.api_key or env_manager.get_value("OPENAI_API_KEY", ""),
+            "base_url": model.base_url,
             "timeout": httpx.Timeout(30.0),
         }
-
-        proxy_url = settings.get("PROXY_URL", "")
+        proxy_url = model.proxy_url
         if proxy_url:
             client_params["http_client"] = httpx.Client(proxy=proxy_url)
 
-        model_name = settings.get("OPENAI_MODEL_NAME", "")
+        model_name = model.model_name
         client = OpenAI(**client_params)
         messages = [{"role": "user", "content": AI_TEST_PROMPT}]
         api_mode = CHAT_COMPLETIONS_API_MODE
-        stored_enable_thinking = env_manager.get_value("ENABLE_THINKING", "false")
-        disable_thinking = (
-            str(stored_enable_thinking).lower() == "true"
-            or model_requires_thinking_disabled(model_name)
-        )
+        disable_thinking = bool(model.enable_thinking) or model_requires_thinking_disabled(model_name)
 
         try:
             request_params = build_ai_request_params(
@@ -384,9 +477,10 @@ async def test_ai_settings(settings: dict):
                 model=model_name,
                 messages=messages,
                 max_output_tokens=AI_TEST_MAX_OUTPUT_TOKENS,
+                enable_json_output=bool(model.enable_response_format),
             )
             if disable_thinking:
-                request_params["extra_body"] = {"enable_thinking": False}
+                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
             response = create_ai_response_sync(client, api_mode, request_params)
         except Exception as exc:
             if not is_chat_completions_api_unsupported_error(exc):
@@ -397,9 +491,10 @@ async def test_ai_settings(settings: dict):
                 model=model_name,
                 messages=messages,
                 max_output_tokens=AI_TEST_MAX_OUTPUT_TOKENS,
+                enable_json_output=bool(model.enable_response_format),
             )
             if disable_thinking:
-                request_params["extra_body"] = {"enable_thinking": False}
+                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
             response = create_ai_response_sync(client, api_mode, request_params)
 
         return {

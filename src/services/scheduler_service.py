@@ -25,6 +25,9 @@ class SchedulerService:
     def __init__(self, process_service: ProcessService):
         self.scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
         self.process_service = process_service
+        # 是否暂停全部定时触发；暂停后所有已加载任务的触发规则都不生效，
+        # 但不影响手动触发（启动/全部开始）。
+        self._paused = False
         self.scheduler.add_listener(
             self._on_job_event, EVENT_JOB_ERROR | EVENT_JOB_MISSED
         )
@@ -46,6 +49,22 @@ class SchedulerService:
         if self.scheduler.running:
             self.scheduler.shutdown()
             logger.info("调度器已停止")
+
+    def is_paused(self) -> bool:
+        """是否处于「暂停全部定时触发」状态"""
+        return self._paused
+
+    def set_paused(self, paused: bool) -> None:
+        """暂停/恢复全部定时触发。仅影响定时触发，不影响手动触发。"""
+        self._paused = bool(paused)
+        if not self.scheduler.running:
+            return
+        if self._paused:
+            self.scheduler.pause()
+            logger.info("已暂停全部定时触发（调度器仍在运行，手动触发不受影响）")
+        else:
+            self.scheduler.resume()
+            logger.info("已恢复全部定时触发")
 
     def get_next_run_time(self, task_id: int):
         job = self.scheduler.get_job(f"task_{task_id}")
@@ -96,6 +115,12 @@ class SchedulerService:
                     logger.warning(f"  -> [警告] 任务 '{task.task_name}' 的 Cron 表达式无效: {e}")
 
         logger.info("定时任务加载完成")
+
+        # 重新加载后，若处于「暂停全部定时触发」状态，则让调度器保持暂停。
+        # （pause 作用于整个调度器，而非单个 job，因此 remove_all_jobs + add_job
+        # 之后定时触发依旧不会生效，直到 resume。）
+        if self._paused and self.scheduler.running:
+            self.scheduler.pause()
 
     async def _run_task(self, task_id: int, task_name: str):
         """执行定时任务：加入串行队列，由队列 worker 顺序执行"""

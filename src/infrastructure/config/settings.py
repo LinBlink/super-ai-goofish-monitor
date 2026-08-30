@@ -9,8 +9,9 @@ except ImportError:
     from pydantic import BaseSettings
     _USING_PYDANTIC_SETTINGS = False
 from pydantic import Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import os
+import json
 
 DEFAULT_TELEGRAM_API_BASE_URL = "https://api.telegram.org"
 DEFAULT_SMTP_PORT = 465
@@ -40,7 +41,12 @@ else:
 
 
 class AISettings(_EnvSettings):
-    """AI模型配置"""
+    """AI模型配置
+
+    支持配置多个模型：第一个模型为主模型，其余模型用于兜底。
+    多模型通过环境变量 ``AI_MODELS`` (JSON 数组) 配置；若未配置 AI_MODELS，
+    则退化使用传统的 OPENAI_API_KEY/OPENAI_BASE_URL/OPENAI_MODEL_NAME 作为唯一主模型。
+    """
     api_key: Optional[str] = _env_field(None, "OPENAI_API_KEY")
     base_url: str = _env_field("", "OPENAI_BASE_URL")
     model_name: str = _env_field("", "OPENAI_MODEL_NAME")
@@ -49,10 +55,63 @@ class AISettings(_EnvSettings):
     enable_response_format: bool = _env_field(True, "ENABLE_RESPONSE_FORMAT")
     enable_thinking: bool = _env_field(False, "ENABLE_THINKING")
     skip_analysis: bool = _env_field(False, "SKIP_AI_ANALYSIS")
+    ai_models_json: Optional[str] = _env_field(None, "AI_MODELS")
+
+    def _normalize_model_config(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        """将原始字典规整为统一模型配置结构。"""
+        def _as_bool(value, default: bool) -> bool:
+            if isinstance(value, bool):
+                return value
+            if value is None:
+                return default
+            return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+        return {
+            "api_key": raw.get("api_key") or None,
+            "base_url": (raw.get("base_url") or "").strip(),
+            "model_name": (raw.get("model_name") or "").strip(),
+            "proxy_url": raw.get("proxy_url") or None,
+            "enable_response_format": _as_bool(raw.get("enable_response_format"), True),
+            "enable_thinking": _as_bool(raw.get("enable_thinking"), False),
+        }
+
+    def models(self) -> List[Dict[str, Any]]:
+        """返回有序模型配置列表，第一个为主模型，其余为兜底模型。
+
+        若 AI_MODELS 已配置且可解析，优先使用；否则回退到传统的单模型环境变量。
+        """
+        if self.ai_models_json:
+            try:
+                parsed = json.loads(self.ai_models_json)
+            except (json.JSONDecodeError, TypeError):
+                parsed = None
+            if isinstance(parsed, list) and parsed:
+                result = []
+                for item in parsed:
+                    if not isinstance(item, dict):
+                        continue
+                    cfg = self._normalize_model_config(item)
+                    if not cfg["base_url"] or not cfg["model_name"]:
+                        continue
+                    result.append(cfg)
+                if result:
+                    return result
+
+        # 回退：使用传统单模型环境变量
+        if self.base_url and self.model_name:
+            return [self._normalize_model_config({
+                "api_key": self.api_key,
+                "base_url": self.base_url,
+                "model_name": self.model_name,
+                "proxy_url": self.proxy_url,
+                "enable_response_format": self.enable_response_format,
+                "enable_thinking": self.enable_thinking,
+            })]
+        return []
 
     def is_configured(self) -> bool:
-        """检查AI是否已正确配置"""
-        return bool(self.base_url and self.model_name)
+        """检查AI是否已正确配置（至少存在一个可用模型）"""
+        return bool(self.models())
 
 
 class NotificationSettings(_EnvSettings):

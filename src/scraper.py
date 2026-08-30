@@ -574,6 +574,50 @@ async def scrape_user_profile(context, user_id: str) -> dict:
         print("      [采集阶段] 开始采集该用户的评价列表...")
         rating_tab_locator = page.locator("//div[text()='信用及评价']/ancestor::li")
         if await rating_tab_locator.count() > 0:
+            # 闲鱼页面常弹登录引导弹窗（ant-modal-wrap），拦截点击；多重策略强制关闭。
+            async def _dismiss_login_modal():
+                modal_wrap = page.locator(".ant-modal-wrap.login-modal-wrap--Tb8DyHnb")
+                if await modal_wrap.count() == 0:
+                    return
+                # 1. 尝试 ESC 键
+                try:
+                    await page.keyboard.press("Escape")
+                    await page.wait_for_timeout(300)
+                except Exception:
+                    pass
+                if await modal_wrap.count() == 0:
+                    return
+                # 2. 尝试点击遮罩层（ant-modal-mask）
+                try:
+                    mask = page.locator(".ant-modal-mask")
+                    if await mask.count() > 0:
+                        await mask.first.click(position={"x": 10, "y": 10}, timeout=1000)
+                        await page.wait_for_timeout(300)
+                except Exception:
+                    pass
+                if await modal_wrap.count() == 0:
+                    return
+                # 3. 尝试任意关闭按钮
+                try:
+                    close_btn = modal_wrap.locator("button.ant-modal-close, .ant-modal-close-x, [aria-label='Close'], [aria-label='关闭']")
+                    if await close_btn.count() > 0:
+                        await close_btn.first.click(timeout=1000)
+                        await page.wait_for_timeout(300)
+                except Exception:
+                    pass
+                if await modal_wrap.count() == 0:
+                    return
+                # 4. 兜底：JS 强制移除
+                try:
+                    await page.evaluate("""() => {
+                        document.querySelectorAll('.ant-modal-wrap.login-modal-wrap--Tb8DyHnb, .ant-modal-mask')
+                            .forEach(el => el.remove());
+                    }""")
+                    await page.wait_for_timeout(200)
+                except Exception:
+                    pass
+
+            await _dismiss_login_modal()
             await rating_tab_locator.click()
             await random_sleep(3, 5)  # 等待第一页评价API完成
 

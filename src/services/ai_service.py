@@ -51,7 +51,6 @@ class AIAnalysisService:
     def _validate_result(self, result: Dict) -> bool:
         """验证 AI 分析结果的格式"""
         required_fields = [
-            "prompt_version",
             "is_recommended",
             "reason",
             "risk_tags",
@@ -63,6 +62,10 @@ class AIAnalysisService:
             if field not in result:
                 logger.warning(f"AI 响应缺少必需字段: {field}")
                 return False
+
+        # prompt_version 为自描述字段，部分模型会漏掉，缺失时补默认值。
+        if not result.get("prompt_version"):
+            result["prompt_version"] = "EagleEye-V6.4"
 
         # 检查数据类型
         if not isinstance(result.get("is_recommended"), bool):

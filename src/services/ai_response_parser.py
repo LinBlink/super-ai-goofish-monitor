@@ -48,12 +48,21 @@ def extract_ai_response_content(response: Any) -> str:
 
 
 def parse_ai_response_json(content: str) -> dict:
-    """解析 AI 文本响应中的 JSON。"""
+    """解析 AI 文本响应中的 JSON。若模型误输出为数组，取首个对象元素。"""
     cleaned = _strip_code_fences(content)
     try:
-        return json.loads(cleaned)
+        parsed = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        return _extract_first_json_value(cleaned, exc)
+        parsed = _extract_first_json_value(cleaned, exc)
+
+    # 部分模型会误把单个对象包在数组里返回，如 [{...}]，取首个对象元素。
+    if isinstance(parsed, list):
+        if parsed and isinstance(parsed[0], dict):
+            return parsed[0]
+        raise ValueError("AI 响应为空数组或非对象数组。")
+    if not isinstance(parsed, dict):
+        raise ValueError(f"AI 响应非预期类型: {type(parsed).__name__}")
+    return parsed
 
 
 def _coerce_content_parts(content: Any) -> str:

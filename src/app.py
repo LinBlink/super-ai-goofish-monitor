@@ -98,6 +98,15 @@ async def lifespan(app: FastAPI):
     # 加载定时任务
     await scheduler_service.reload_jobs(tasks_list)
     scheduler_service.start()
+
+    # 尊重持久化的「暂停全部定时触发」设置
+    from src.infrastructure.config.env_manager import env_manager
+    scheduler_paused = (
+        str(env_manager.get_value("SCHEDULER_PAUSED", "false")).strip().lower()
+        in {"1", "true", "yes", "y", "on"}
+    )
+    scheduler_service.set_paused(scheduler_paused)
+
     process_service.start()
 
     print("应用启动完成")

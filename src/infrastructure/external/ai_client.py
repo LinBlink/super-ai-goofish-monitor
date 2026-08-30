@@ -2,10 +2,12 @@
 AI 客户端封装
 提供统一的 AI 调用接口
 """
+import asyncio
 import ipaddress
 import os
 import json
 import base64
+import random
 from typing import Dict, List, Optional
 from datetime import datetime
 from dotenv import load_dotenv
@@ -21,13 +23,19 @@ from src.services.ai_request_compat import (
     RESPONSES_API_MODE,
     build_ai_request_params,
     create_ai_response_async,
+    get_retry_after_seconds,
     is_chat_completions_api_unsupported_error,
     is_json_output_unsupported_error,
+    is_rate_limit_error,
     is_responses_api_unsupported_error,
     is_temperature_unsupported_error,
     model_requires_thinking_disabled,
     remove_temperature_param,
 )
+
+# 单次退避上限：5 小时。速率限制/调用失败时按指数增长，最久退避到该值。
+AI_RATE_LIMIT_BASE_SECONDS = 5
+AI_RATE_LIMIT_MAX_SECONDS = 5 * 60 * 60
 from src.services.ai_response_parser import (
     EmptyAIResponseError,
     extract_ai_response_content,
@@ -78,28 +86,31 @@ class AIClient:
     def _load_settings(self) -> None:
         load_dotenv(dotenv_path=env_manager.env_file, override=True)
         self.settings = AISettings()
+        self._model_configs = self.settings.models()
+        self._primary = self._model_configs[0] if self._model_configs else None
 
     def refresh(self) -> None:
         self._load_settings()
         self.client = self._initialize_client()
 
     def _initialize_client(self) -> Optional[AsyncOpenAI]:
-        """初始化 OpenAI 客户端"""
-        if not self.settings or not self.settings.is_configured():
+        """初始化 OpenAI 客户端（使用主模型配置）"""
+        if not self._primary:
             print("警告：AI 配置不完整，AI 功能将不可用")
             return None
 
         try:
-            if self.settings.proxy_url:
-                print(f"正在为 AI 请求使用代理: {self.settings.proxy_url}")
-                os.environ['HTTP_PROXY'] = self.settings.proxy_url
-                os.environ['HTTPS_PROXY'] = self.settings.proxy_url
+            proxy_url = self._primary.get("proxy_url")
+            if proxy_url:
+                print(f"正在为 AI 请求使用代理: {proxy_url}")
+                os.environ['HTTP_PROXY'] = proxy_url
+                os.environ['HTTPS_PROXY'] = proxy_url
 
             _sanitize_no_proxy_env()
 
             return AsyncOpenAI(
-                api_key=self.settings.api_key,
-                base_url=self.settings.base_url
+                api_key=self._primary.get("api_key"),
+                base_url=self._primary.get("base_url")
             )
         except Exception as e:
             print(f"初始化 AI 客户端失败: {e}")
@@ -190,17 +201,18 @@ class AIClient:
         """调用 AI API"""
         api_mode = CHAT_COMPLETIONS_API_MODE
         use_response_format = (
-            self.settings.enable_response_format
+            self._primary.get("enable_response_format", True)
             if enable_json_output is None
             else enable_json_output
         )
         use_temperature = True
-        max_attempts = 4
+        # 退避按指数增长，单次最长 AI_RATE_LIMIT_MAX_SECONDS(5h)，此处重试次数需足够多才能逼近上限。
+        max_attempts = 12
 
         for attempt in range(max_attempts):
             request_params = build_ai_request_params(
                 api_mode,
-                model=self.settings.model_name,
+                model=self._primary.get("model_name"),
                 messages=messages,
                 temperature=temperature,
                 max_output_tokens=max_output_tokens,
@@ -209,10 +221,11 @@ class AIClient:
             if not use_temperature:
                 request_params = remove_temperature_param(request_params)
 
-            if self.settings.enable_thinking or model_requires_thinking_disabled(
-                self.settings.model_name
+            if self._primary.get("enable_thinking") or model_requires_thinking_disabled(
+                self._primary.get("model_name")
             ):
-                request_params["extra_body"] = {"enable_thinking": False}
+                # MiniMax（含 M3）通过 thinking.type=disabled 关闭思考；M2.x 会忽略。
+                request_params["extra_body"] = {"thinking": {"type": "disabled"}}
 
             try:
                 response = await create_ai_response_async(
@@ -253,6 +266,20 @@ class AIClient:
                     changed = True
                     print("当前模型不支持 temperature 参数，正在自动重试并移除该参数")
                 if changed and attempt < max_attempts - 1:
+                    continue
+                # 速率限制(429)或一般调用失败：指数退避（带抖动），单次最长 5 小时。
+                if attempt < max_attempts - 1 and is_rate_limit_error(exc):
+                    wait = get_retry_after_seconds(exc)
+                    if wait is None:
+                        wait = min(
+                            AI_RATE_LIMIT_MAX_SECONDS,
+                            AI_RATE_LIMIT_BASE_SECONDS * (2 ** attempt),
+                        )
+                    wait += random.uniform(0, wait * 0.2)
+                    print(
+                        f"AI 调用触发速率限制(429)，将在 {wait:.0f} 秒后重试 ({attempt + 2}/{max_attempts})"
+                    )
+                    await asyncio.sleep(wait)
                     continue
                 raise
 
