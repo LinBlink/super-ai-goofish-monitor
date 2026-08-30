@@ -32,6 +32,7 @@ from src.ai_message_builder import (
 )
 from src.services.ai_response_parser import (
     EmptyAIResponseError,
+    ModelRepeatedParseError,
     extract_ai_response_content,
     parse_ai_response_json,
 )
@@ -334,8 +335,8 @@ async def send_ntfy_notification(product_data, reason, retries=3, delay=5):
 async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
     """将完整的商品JSON数据和所有图片发送给 AI 进行分析（异步）。
 
-    多模型兜底：依次尝试主模型及其余兜底模型，仅当某模型发生 API/网络错误时才切换到下一个；
-    空响应或 JSON 解析失败不触发兜底，直接作为本次分析失败。
+    多模型兜底：依次尝试主模型及其余兜底模型。API/网络错误或同一模型连续
+    多次解析失败都会触发兜底切换，避免在出问题的模型上浪费时间和 token。
     """
     runners = build_model_runners()
     if not runners:
@@ -351,6 +352,20 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
             last_exc = e
             role = "主模型" if idx == 0 else f"兜底模型#{idx}"
             safe_print(f"   [AI分析] {role} ({model_name}) 发生API/网络错误，切换下一模型: {e}", level="WARNING")
+            continue
+        except ModelRepeatedParseError as e:
+            role = "主模型" if idx == 0 else f"兜底模型#{idx}"
+            is_last = idx >= len(runners) - 1
+            if is_last:
+                safe_print(
+                    f"   [AI分析] {role} ({model_name}) 连续解析失败且已是最后一个模型，放弃兜底: {e}",
+                    level="ERROR",
+                )
+                raise
+            safe_print(
+                f"   [AI分析] {role} ({model_name}) 解析连续失败，切换下一模型: {e}",
+                level="WARNING",
+            )
             continue
     if last_exc is not None:
         raise last_exc
@@ -432,10 +447,14 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
 
     # 增强的AI调用，包含更严格的结构化输出控制和重试机制
     # 退避按指数增长，单次最长 RATE_LIMIT_MAX_DELAY_SECONDS(5h)，此处重试次数需足够多才能逼近上限。
-    max_retries = 12
+    # 退避按指数增长，单次最长 RATE_LIMIT_MAX_DELAY_SECONDS(5h)。这里只需要
+    # 几次重试来覆盖瞬时抖动；同一 prompt 反复解析失败时应让上层切到兜底模型。
+    max_retries = 5
+    parse_failure_threshold = 2  # 连续 N 次解析/格式失败则抛 ModelRepeatedParseError
     api_mode = CHAT_COMPLETIONS_API_MODE
     use_response_format = enable_response_format
     use_temperature = True
+    consecutive_parse_failures = 0
     for attempt in range(max_retries):
         try:
             # 根据重试次数调整参数
@@ -494,18 +513,45 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                     safe_print(f"   [AI分析] 第{attempt + 1}次尝试成功，响应格式验证通过")
                     return parsed_response
                 safe_print(f"   [AI分析] 第{attempt + 1}次尝试格式验证失败")
+                consecutive_parse_failures += 1
+                if consecutive_parse_failures >= parse_failure_threshold:
+                    safe_print(
+                        f"   [AI分析] 模型 {model_name} 连续 {consecutive_parse_failures} 次解析/格式校验失败，立即切换兜底模型",
+                        level="WARNING",
+                    )
+                    raise ModelRepeatedParseError(
+                        f"{model_name} 连续 {consecutive_parse_failures} 次解析失败"
+                    )
                 if attempt < max_retries - 1:
                     safe_print(f"   [AI分析] 准备第{attempt + 2}次重试...")
                     continue
-                raise ValueError("AI响应格式缺少必需字段或字段类型不正确。")
+                raise EmptyAIResponseError("AI响应格式缺少必需字段或字段类型不正确。")
             except json.JSONDecodeError as e:
                 safe_print(f"   [AI分析] 第{attempt + 1}次尝试JSON解析失败: {e}")
+                consecutive_parse_failures += 1
+                if consecutive_parse_failures >= parse_failure_threshold:
+                    safe_print(
+                        f"   [AI分析] 模型 {model_name} 连续 {consecutive_parse_failures} 次解析失败，立即切换兜底模型",
+                        level="WARNING",
+                    )
+                    raise ModelRepeatedParseError(
+                        f"{model_name} 连续 {consecutive_parse_failures} 次解析失败"
+                    )
                 if attempt < max_retries - 1:
                     safe_print(f"   [AI分析] 准备第{attempt + 2}次重试...")
                     continue
                 raise e
             except EmptyAIResponseError as e:
                 safe_print(f"   [AI分析] 第{attempt + 1}次尝试返回空响应: {e}")
+                consecutive_parse_failures += 1
+                if consecutive_parse_failures >= parse_failure_threshold:
+                    safe_print(
+                        f"   [AI分析] 模型 {model_name} 连续 {consecutive_parse_failures} 次解析失败，立即切换兜底模型",
+                        level="WARNING",
+                    )
+                    raise ModelRepeatedParseError(
+                        f"{model_name} 连续 {consecutive_parse_failures} 次解析失败"
+                    )
                 if attempt < max_retries - 1:
                     safe_print(f"   [AI分析] 准备第{attempt + 2}次重试...")
                     continue
@@ -588,6 +634,20 @@ async def screen_product_title(
             role = "主模型" if idx == 0 else f"兜底模型#{idx}"
             safe_print(f"   [AI标题预筛] {role} ({model_name}) 发生API/网络错误，切换下一模型: {e}", level="WARNING")
             continue
+        except ModelRepeatedParseError as e:
+            role = "主模型" if idx == 0 else f"兜底模型#{idx}"
+            is_last = idx >= len(runners) - 1
+            if is_last:
+                safe_print(
+                    f"   [AI标题预筛] {role} ({model_name}) 连续解析失败且已是最后一个模型，保守不跳过: {e}",
+                    level="WARNING",
+                )
+                return True, ""
+            safe_print(
+                f"   [AI标题预筛] {role} ({model_name}) 解析连续失败，切换下一模型: {e}",
+                level="WARNING",
+            )
+            continue
     # 所有模型均不可用（API/网络错误），保守地不跳过
     return True, ""
 
@@ -620,8 +680,9 @@ async def _screen_with_single_model(
     ]
 
     api_mode = CHAT_COMPLETIONS_API_MODE
-    # 退避按指数增长，单次最长 RATE_LIMIT_MAX_DELAY_SECONDS(5h)，此处重试次数需足够多才能逼近上限。
-    max_retries = 8
+    max_retries = 4
+    parse_failure_threshold = 2  # 连续 N 次解析失败则抛 ModelRepeatedParseError
+    consecutive_parse_failures = 0
     for attempt in range(max_retries):
         try:
             request_params = build_ai_request_params(
@@ -640,7 +701,22 @@ async def _screen_with_single_model(
 
             response = await create_ai_response_async(client, api_mode, request_params)
             content = extract_ai_response_content(response)
-            parsed = parse_ai_response_json(content)
+            try:
+                parsed = parse_ai_response_json(content)
+            except (EmptyAIResponseError, json.JSONDecodeError, ValueError) as parse_exc:
+                consecutive_parse_failures += 1
+                if consecutive_parse_failures >= parse_failure_threshold:
+                    safe_print(
+                        f"   [AI标题预筛] 模型 {model_name} 连续 {consecutive_parse_failures} 次解析失败，立即切换兜底模型: {parse_exc}",
+                        level="WARNING",
+                    )
+                    raise ModelRepeatedParseError(
+                        f"{model_name} 连续 {consecutive_parse_failures} 次解析失败"
+                    ) from parse_exc
+                safe_print(
+                    f"   [AI标题预筛] 第{attempt + 1}次解析失败，准备第{attempt + 2}次重试: {parse_exc}"
+                )
+                continue
             match_val = parsed.get("match")
             if isinstance(match_val, str):
                 match_val = str(match_val).strip().lower() in {"true", "1", "是", "yes"}
@@ -655,6 +731,8 @@ async def _screen_with_single_model(
                     f"   [AI标题预筛] 模型 {model_name} 触发速率限制(429)，立即切换兜底模型: {exc}",
                     level="ERROR",
                 )
+                raise
+            if isinstance(exc, ModelRepeatedParseError):
                 raise
             safe_print(f"   [AI标题预筛] 第{attempt + 1}次调用失败: {exc}")
             if attempt < max_retries - 1:

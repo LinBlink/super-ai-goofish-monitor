@@ -22,6 +22,10 @@ class EmptyAIResponseError(ValueError):
     """AI 返回了空内容。"""
 
 
+class ModelRepeatedParseError(Exception):
+    """同一模型对同一 prompt 多次解析失败，触发上层切换到兜底模型。"""
+
+
 def extract_ai_response_content(response: Any) -> str:
     """从不同形态的 AI 响应中提取文本内容。"""
     if response is None:
@@ -64,9 +68,11 @@ def parse_ai_response_json(content: str) -> dict:
     if isinstance(parsed, list):
         if parsed and isinstance(parsed[0], dict):
             return parsed[0]
-        raise ValueError("AI 响应为空数组或非对象数组。")
+        # [] 或 [scalar,...] 不是有效对象，按"无响应"处理，触发上层快速重试/兜底模型，
+        # 而不是被外层通用异常捕获后做数小时指数退避。
+        raise EmptyAIResponseError("AI 响应为空数组或非对象数组。")
     if not isinstance(parsed, dict):
-        raise ValueError(f"AI 响应非预期类型: {type(parsed).__name__}")
+        raise EmptyAIResponseError(f"AI 响应非预期类型: {type(parsed).__name__}")
     return parsed
 
 
