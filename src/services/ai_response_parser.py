@@ -5,7 +5,17 @@ import json
 import re
 from typing import Any
 
-_THINK_TAG_PATTERN = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
+_THINK_TAG_PATTERN = re.compile(r"\s*thinking.*? response", re.IGNORECASE | re.DOTALL)
+# 覆盖未封闭或带属性的思考标记（<thinking attr>…<answer> 等）。
+_THINK_TAG_LOOSE_PATTERN = re.compile(
+    r"<\s*(thinking|reasoning|analysis)\b[^>]*>.*?(?:<\s*/\s*\1\s*>|<\s*(answer|response)\b[^>]*>)",
+    re.IGNORECASE | re.DOTALL,
+)
+# 删除残留的各种思考标签本身（如 <thinking>、</thinking>、<reasoning> …）。
+_THINK_TAG_STRIP_PATTERN = re.compile(
+    r"<\s*/\s*(thinking|reasoning|analysis)\s*>|<\s*(thinking|reasoning|analysis)\b[^>]*>",
+    re.IGNORECASE,
+)
 
 
 class EmptyAIResponseError(ValueError):
@@ -34,15 +44,10 @@ def extract_ai_response_content(response: Any) -> str:
         if message is None:
             raise EmptyAIResponseError("AI响应缺少 message。")
         content = getattr(message, "content", None)
-        
-        # 智谱等 OpenAI 兼容网关在某些模式下会把输出放在 reasoning_content 而非 content
-        try:
-            return _normalize_text_content(_coerce_content_parts(content))
-        except EmptyAIResponseError:
-            reasoning_content = getattr(message, "reasoning_content", None)
-            if reasoning_content:
-                return _normalize_text_content(_coerce_content_parts(reasoning_content))
-            raise
+
+        # 彻底忽略思考：reasoning_content 是模型的思考过程，不作为答案返回。
+        # 若 output 的 content 缺失，抛 EmptyAIResponseError 触发重试/兜底，而非用思考内容充当答案。
+        return _normalize_text_content(_coerce_content_parts(content))
 
     raise ValueError(f"无法识别的AI响应类型: {type(response).__name__}")
 
@@ -81,6 +86,15 @@ def _coerce_content_parts(content: Any) -> str:
             parts.append(item)
             continue
         if isinstance(item, dict):
+            # 彻底忽略思考类内容块（如 OpenAI 兼容的 type=reasoning/thinking/analysis），
+            # 避免思考过程混入答案、影响解析。
+            part_type = item.get("type")
+            if isinstance(part_type, str) and part_type.lower() in {
+                "reasoning",
+                "thinking",
+                "analysis",
+            }:
+                continue
             text = item.get("text")
             if isinstance(text, str):
                 parts.append(text)
@@ -102,8 +116,19 @@ def _normalize_text_content(content: str) -> str:
 
 
 def _strip_thinking_tags(text: str) -> str:
-    """移除部分推理模型直接输出在正文中的 <think>...</think> 思考过程。"""
-    return _THINK_TAG_PATTERN.sub("", text).strip()
+    """彻底移除模型中输出的思考过程，避免其影响答案解析。
+
+    不同推理模型的思考格式各不相同（如 thinking/…/response 块、
+    <thinking>…</thinking>、<reasoning>…</reasoning>、<analysis>…</analysis>）。
+    这里用多组正则做防御性剥离：先去掉块状思考，再去掉残留的思考标签。
+    JSON 等结构化输出本身不含思考标签，剥离后不影响其内容。
+    """
+    if not text:
+        return text
+    stripped = _THINK_TAG_PATTERN.sub("", text)
+    stripped = _THINK_TAG_LOOSE_PATTERN.sub("", stripped)
+    stripped = _THINK_TAG_STRIP_PATTERN.sub("", stripped)
+    return stripped.strip()
 
 
 def _strip_code_fences(content: str) -> str:

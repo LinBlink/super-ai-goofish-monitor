@@ -37,9 +37,8 @@ def test_parse_ai_response_json_raises_when_no_json_exists():
         parse_ai_response_json("没有任何 JSON 内容")
 
 
-def test_extract_ai_response_content_with_none_content_but_valid_reasoning_content():
-    """当 content 为 None 但 reasoning_content 有值时，应该成功提取 reasoning_content 的内容"""
-    # 创建 mock 对象模拟 OpenAI 风格的响应
+def test_extract_ai_response_content_ignores_reasoning_content_when_content_missing():
+    """content 缺失时，思考内容（reasoning_content）不作为答案，应抛 EmptyAIResponseError。"""
     message = type('Message', (), {
         'content': None,
         'reasoning_content': '这是推理内容'
@@ -47,9 +46,8 @@ def test_extract_ai_response_content_with_none_content_but_valid_reasoning_conte
     choice = type('Choice', (), {'message': message})()
     response = type('Response', (), {'choices': [choice]})()
 
-    result = extract_ai_response_content(response)
-
-    assert result == '这是推理内容'
+    with pytest.raises(EmptyAIResponseError):
+        extract_ai_response_content(response)
 
 
 def test_extract_ai_response_content_raises_when_content_and_reasoning_content_are_empty():
@@ -57,6 +55,31 @@ def test_extract_ai_response_content_raises_when_content_and_reasoning_content_a
     # 创建 mock 对象
     message = type('Message', (), {
         'content': None,
+        'reasoning_content': None
+    })()
+    choice = type('Choice', (), {'message': message})()
+    response = type('Response', (), {'choices': [choice]})()
+
+    with pytest.raises(EmptyAIResponseError):
+        extract_ai_response_content(response)
+
+
+def test_extract_ai_response_content_strips_thinking_tags_from_output():
+    """思考块（thinking/…/response、<thinking>…</thinking> 等）应从答案中彻底剥离。"""
+    message = type('Message', (), {
+        'content': '<thinking>隐藏的思考</thinking>真实答案 <reasoning>再多思考</reasoning>',
+        'reasoning_content': None
+    })()
+    choice = type('Choice', (), {'message': message})()
+    response = type('Response', (), {'choices': [choice]})()
+
+    assert extract_ai_response_content(response) == '真实答案'
+
+
+def test_extract_ai_response_content_raises_when_only_thinking_tags_remain():
+    """输出仅含思考块、无实际答案时，应抛 EmptyAIResponseError。"""
+    message = type('Message', (), {
+        'content': ' thinking 思考中  response',
         'reasoning_content': None
     })()
     choice = type('Choice', (), {'message': message})()
