@@ -47,7 +47,10 @@ const hiddenLabel = computed(() => {
   return t('results.card.hidden')
 })
 
-const expanded = ref(false)
+const reasonExpanded = ref(false)
+const titleExpanded = ref(false)
+
+const showTitleToggle = computed(() => (info.商品标题 || '').length > 28)
 </script>
 
 <template>
@@ -97,11 +100,22 @@ const expanded = ref(false)
 
     <CardHeader class="p-4 pb-2">
       <div class="flex justify-between items-start gap-3">
-        <CardTitle class="text-base font-semibold text-slate-800 line-clamp-2 leading-snug flex-grow h-10">
-          <a :href="info.商品链接" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">
-            {{ info.商品标题 }}
-          </a>
-        </CardTitle>
+        <div class="flex-grow min-w-0">
+          <CardTitle class="text-base font-semibold text-slate-800 leading-snug" :class="titleExpanded ? '' : 'line-clamp-2'">
+            <a :href="info.商品链接" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">
+              {{ info.商品标题 }}
+            </a>
+          </CardTitle>
+          <button
+            type="button"
+            v-if="showTitleToggle"
+            @click="titleExpanded = !titleExpanded"
+            class="mt-0.5 text-[10px] font-bold uppercase text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
+          >
+            {{ titleExpanded ? t('results.card.collapse') : t('results.card.expand') }}
+            <Info class="w-3 h-3" />
+          </button>
+        </div>
       </div>
       <div class="flex items-baseline gap-1 mt-2">
         <span class="text-2xl font-bold text-rose-600 tracking-tight">{{ info.当前售价 }}</span>
@@ -131,17 +145,17 @@ const expanded = ref(false)
           ></div>
         </div>
 
-        <p class="text-xs leading-relaxed text-slate-600" :class="{ 'line-clamp-2': !expanded }">
+        <p class="text-xs leading-relaxed text-slate-600" :class="{ 'line-clamp-2': !reasonExpanded }">
            {{ ai?.reason || t('results.card.analyzing') }}
         </p>
         
         <button
           type="button"
           v-if="ai?.reason && ai.reason.length > 50"
-          @click="expanded = !expanded" 
+          @click="reasonExpanded = !reasonExpanded" 
           class="mt-1 text-[10px] font-bold uppercase text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
         >
-          {{ expanded ? t('results.card.collapse') : t('results.card.expand') }}
+          {{ reasonExpanded ? t('results.card.collapse') : t('results.card.expand') }}
           <Info class="w-3 h-3" />
         </button>
       </div>
