@@ -557,6 +557,10 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                     continue
                 raise e
 
+        except ModelRepeatedParseError:
+            # 解析连续失败的信号应原样抛给外层多模型循环去切兜底模型，
+            # 不要被通用 except 当成普通调用失败再走指数退避。
+            raise
         except Exception as e:
             if (
                 api_mode == CHAT_COMPLETIONS_API_MODE
