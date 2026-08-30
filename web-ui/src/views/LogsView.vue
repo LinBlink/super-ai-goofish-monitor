@@ -24,7 +24,7 @@ const lastScrollTop = ref(0)
 const lastScrollHeight = ref(0)
 
 // ── 日志等级过滤（按最低严重级别） ──────────────────────────────
-type LogLevel = '' | 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
+type LogLevel = 'all' | 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
 
 const LEVEL_SEVERITY: Record<string, number> = {
   DEBUG: 10,
@@ -37,10 +37,10 @@ const LEVEL_SEVERITY: Record<string, number> = {
 }
 const LEVEL_RE = /\[(DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL)\]/
 
-const levelFilter = ref<LogLevel>('')
+const levelFilter = ref<LogLevel>('all')
 
 const levelOptions = [
-  { value: '', label: t('logs.levels.all') },
+  { value: 'all', label: t('logs.levels.all') },
   { value: 'DEBUG', label: t('logs.levels.debug') },
   { value: 'INFO', label: t('logs.levels.info') },
   { value: 'WARNING', label: t('logs.levels.warning') },
@@ -50,7 +50,7 @@ const levelOptions = [
 
 // 无等级标记的普通行视为 INFO，便于"全部/DEBUG/INFO"时都能看到
 const filteredLogs = computed(() => {
-  if (!levelFilter.value) return logs.value
+  if (levelFilter.value === 'all') return logs.value
   const min = LEVEL_SEVERITY[levelFilter.value] ?? 0
   return logs.value
     .split('\n')
