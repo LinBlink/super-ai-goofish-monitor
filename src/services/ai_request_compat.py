@@ -46,14 +46,19 @@ def model_requires_thinking_disabled(model_name: str) -> bool:
 def build_thinking_disable_extra(model_name: str, base_url: str = "") -> Dict[str, Any] | None:
     """按模型/MSP 返回关闭思考所需的 extra_body 参数；无需关闭时返回 None。
 
-    - MiniMax：OpenAI 兼容的 thinking.type=disabled
+    - MiniMax（实测 M2.7-highspeed）：必须同时发送 OpenAI 兼容的 thinking.type=disabled
+      与 enable_thinking=False——只发其一模型仍会进入推理模式并把整个 token 预算消耗在
+      <think>... 上，导致正文为空/JSON 解析失败。
     - 腾讯 Hunyuan（hy3 / lkeap）：enable_thinking=False（enable_thinking=True 时模型会把
-      输出几乎全部写入 reasoning_content 而让 content 为空，导致取不到答案）
+      输出几乎全部写入 reasoning_content 而让 content 为空，导致取不到答案）。
     """
     name = (model_name or "").lower()
     url = (base_url or "").lower()
     if "minimax" in name:
-        return {"thinking": {"type": "disabled"}}
+        return {
+            "thinking": {"type": "disabled"},
+            "enable_thinking": False,
+        }
     is_tencent = ("lkeap" in url) or ("tencent" in url) or ("hunyuan" in name) or name.startswith("hy")
     if is_tencent:
         return {"enable_thinking": False}
