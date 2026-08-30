@@ -16,6 +16,8 @@
 - **定时调度**：Cron 表达式配置周期性抓取
 - **账号与代理轮换**：多账号管理、任务可绑定指定账号，代理池轮换配合失败重试降低被风控概率
 - **AI 限流自愈**：遇到 429 会按指数退避自动重试，无需人工干预
+- **多模型兜底**：AI 设置支持配置多个模型，第一个为主模型、其余为兜底模型；主模型发生 API/网络错误时自动切换到下一个模型，每个模型均可单独测试连接
+- **定时任务总开关**：可在系统设置中一键暂停/恢复全部定时触发，便于维护期临时停用调度
 - **Docker 一键部署**：内置 Chromium，开箱即用
 
 ## 截图
@@ -211,11 +213,13 @@ cd web-ui && npm run build
 
 ### AI 与运行时
 
-- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`：AI 模型接入必填项。
+- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`：AI 模型接入必填项（单模型场景使用这组变量即可）。
+- `AI_MODELS`：多模型场景使用。JSON 数组，每个元素为一个模型配置 `{"api_key": "...", "base_url": "...", "model_name": "...", "enable_response_format": true, "enable_thinking": false, "proxy_url": ""}`。**数组第一个为主模型，其余为兜底模型**；主模型出现 API/网络错误时自动切换到下一个。若设置了 `AI_MODELS`，会覆盖传统的 `OPENAI_*` 单模型变量（保存时系统也会自动把主模型同步回 `OPENAI_*` 以兼容旧脚本）。在 Web UI 的「系统设置 → AI 模型设置」中可直接增删模型并逐个测试连接。
 - `AI_TITLE_SCREENING_ENABLED`：「AI 标题预筛」的全局关闭开关。该功能**默认对所有任务开启、无需任何配置**；如需全局关闭，将此环境变量设为 `false`。开启后，爬虫在抓取详情页之前先用 AI 判断商品标题是否根本不符合要求，不符合则直接跳过，节省详情抓取、图片下载与完整 AI 分析的性能。
 - `PROXY_URL`：为 AI 请求单独指定 HTTP/SOCKS5 代理。
 - `RUN_HEADLESS`：是否以无头模式运行爬虫；Docker 中应保持 `true`。
 - `SERVER_PORT`：后端监听端口，默认 `8000`。
+- `SCHEDULER_PAUSED`：是否暂停全部定时触发（`true`/`false`）。在 Web UI 的「系统设置 → 定时调度」中切换后会写入该变量并立即生效；暂停期间已加入执行队列的手动任务不受影响。
 - `LOGIN_IS_EDGE`：本地环境可切换为 Edge 内核；Docker 镜像未内置 Edge，容器内会固定使用 Chromium。
 - `PCURL_TO_MOBILE`：是否将 PC 商品链接转换为移动端链接。
 
@@ -358,7 +362,3 @@ AI 模式会先生成分析标准，再创建任务。现在该流程已改为�
 - 如需了解更多详细信息，请查看 [免责声明](DISCLAIMER.md) 文件。
 
 </details>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=LinBlink/advanced-ai-goofish-monitor&type=Date)](https://www.star-history.com/#LinBlink/advanced-ai-goofish-monitor&Date)

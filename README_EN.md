@@ -17,6 +17,8 @@ This project is forked from [Usagi-org/ai-goofish-monitor](https://github.com/Us
 - **Scheduled Tasks**: Cron expression configuration for periodic tasks
 - **Account & Proxy Rotation**: Multi-account management, task-account binding, proxy pool rotation with failure retry to reduce the odds of being rate-limited
 - **AI Rate-Limit Self-Healing**: 429 responses trigger automatic exponential backoff and retry, no manual intervention needed
+- **Multi-Model Fallback**: AI settings support multiple models — the first is the primary and the rest are fallbacks. On API/network errors the primary automatically fails over to the next model; each model can be tested individually
+- **Scheduler Master Switch**: Pause or resume all scheduled triggers from the system settings, handy for temporarily disabling scheduling during maintenance
 - **Docker Deployment**: One-click containerized deployment with Chromium built in
 
 ## Screenshots
@@ -200,11 +202,13 @@ cd web-ui && npm run build
 
 ### AI and Runtime
 
-- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`: required AI model settings.
+- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`: required AI model settings (sufficient for the single-model case).
+- `AI_MODELS`: for the multi-model case. A JSON array where each element is a model config `{"api_key": "...", "base_url": "...", "model_name": "...", "enable_response_format": true, "enable_thinking": false, "proxy_url": ""}`. **The first array element is the primary model and the rest are fallbacks**; on API/network errors the primary automatically fails over to the next model. If `AI_MODELS` is set it overrides the traditional `OPENAI_*` single-model variables (the primary is also synced back to `OPENAI_*` on save for compatibility with older scripts). Manage and test models directly in the Web UI under "System Settings → AI Model Settings".
 - `AI_TITLE_SCREENING_ENABLED`: opt-out switch for "AI title pre-screening". The feature is **ON by default for every task** (no configuration needed); set this env var to `false` to disable it globally. When on, before fetching the detail page the crawler uses AI to judge whether the title fundamentally meets the requirements; non-matching items are skipped to save detail fetching, image download, and full AI analysis.
 - `PROXY_URL`: dedicated HTTP/SOCKS5 proxy for AI requests.
 - `RUN_HEADLESS`: whether the scraper runs headless; keep it `true` in Docker.
 - `SERVER_PORT`: backend port, default `8000`.
+- `SCHEDULER_PAUSED`: whether all scheduled triggers are paused (`true`/`false`). Toggling it in the Web UI under "System Settings → Scheduler" writes this variable and takes effect immediately; manually queued tasks are unaffected while paused.
 - `LOGIN_IS_EDGE`: use Edge instead of Chrome locally; Docker images do not bundle Edge and always run with Chromium.
 - `PCURL_TO_MOBILE`: convert desktop item URLs to mobile URLs.
 
@@ -345,7 +349,3 @@ Also thanks to ClaudeCode/Gemini/Codex and other model tools for freeing our han
 - For more details, please refer to the [Disclaimer](DISCLAIMER.md) file.
 
 </details>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=LinBlink/advanced-ai-goofish-monitor&type=Date)](https://www.star-history.com/#LinBlink/advanced-ai-goofish-monitor&Date)
