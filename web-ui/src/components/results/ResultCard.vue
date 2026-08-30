@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResultItem } from '@/types/result.d.ts'
 import {
@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import Badge from '@/components/ui/badge/Badge.vue'
-import { ExternalLink, TrendingUp, TrendingDown, Info, User, Clock, CheckCircle2, XCircle, AlertCircle, EyeOff, Eye } from 'lucide-vue-next'
+import { ExternalLink, TrendingUp, TrendingDown, User, Clock, CheckCircle2, XCircle, AlertCircle, EyeOff, Eye } from 'lucide-vue-next'
 import { formatDateTime } from '@/i18n'
 
 interface Props {
@@ -46,11 +46,6 @@ const hiddenLabel = computed(() => {
   if (props.item._hidden_reason === 'expired') return t('results.card.expired')
   return t('results.card.hidden')
 })
-
-const reasonExpanded = ref(false)
-const titleExpanded = ref(false)
-
-const showTitleToggle = computed(() => (info.商品标题 || '').length > 28)
 </script>
 
 <template>
@@ -101,20 +96,11 @@ const showTitleToggle = computed(() => (info.商品标题 || '').length > 28)
     <CardHeader class="p-4 pb-2">
       <div class="flex justify-between items-start gap-3">
         <div class="flex-grow min-w-0">
-          <CardTitle class="text-base font-semibold text-slate-800 leading-snug" :class="titleExpanded ? '' : 'line-clamp-2'">
+          <CardTitle class="text-base font-semibold text-slate-800 leading-snug">
             <a :href="info.商品链接" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">
               {{ info.商品标题 }}
             </a>
           </CardTitle>
-          <button
-            type="button"
-            v-if="showTitleToggle"
-            @click="titleExpanded = !titleExpanded"
-            class="mt-0.5 text-[10px] font-bold uppercase text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
-          >
-            {{ titleExpanded ? t('results.card.collapse') : t('results.card.expand') }}
-            <Info class="w-3 h-3" />
-          </button>
         </div>
       </div>
       <div class="flex items-baseline gap-1 mt-2">
@@ -145,19 +131,9 @@ const showTitleToggle = computed(() => (info.商品标题 || '').length > 28)
           ></div>
         </div>
 
-        <p class="text-xs leading-relaxed text-slate-600" :class="{ 'line-clamp-2': !reasonExpanded }">
+        <p class="text-xs leading-relaxed text-slate-600">
            {{ ai?.reason || t('results.card.analyzing') }}
         </p>
-        
-        <button
-          type="button"
-          v-if="ai?.reason && ai.reason.length > 50"
-          @click="reasonExpanded = !reasonExpanded" 
-          class="mt-1 text-[10px] font-bold uppercase text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
-        >
-          {{ reasonExpanded ? t('results.card.collapse') : t('results.card.expand') }}
-          <Info class="w-3 h-3" />
-        </button>
       </div>
 
       <!-- Price Stats Grid -->
