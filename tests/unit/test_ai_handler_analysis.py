@@ -213,7 +213,7 @@ def test_get_ai_analysis_retries_without_temperature_when_gateway_rejects_it(
     assert "temperature" not in request_history[1]
 
 
-def test_get_ai_analysis_backs_off_and_retries_after_rate_limit_error(
+def test_single_model_raises_immediately_on_rate_limit_without_backoff(
     monkeypatch, tmp_path
 ):
     monkeypatch.chdir(tmp_path)
@@ -223,47 +223,34 @@ def test_get_ai_analysis_backs_off_and_retries_after_rate_limit_error(
     class _RateLimitError(Exception):
         status_code = 429
 
-    async def fake_create(**kwargs):
-        request_history.append(kwargs)
-        if len(request_history) == 1:
-            raise _RateLimitError(
-                "Error code: 429 - {'type': 'error', 'error': {'type': "
-                "'rate_limit_error', 'message': 'rate limited', 'http_code': '429'}}"
-            )
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    message=SimpleNamespace(
-                        content=(
-                            '{"prompt_version":"v1","is_recommended":true,'
-                            '"reason":"ok","risk_tags":[],"criteria_analysis":{"seller_type":"个人"}}'
-                        )
-                    )
-                )
-            ]
+    async def primary_create(**kwargs):
+        request_history.append(("primary", kwargs))
+        raise _RateLimitError(
+            "Error code: 429 - {'type': 'error', 'error': {'type': "
+            "'rate_limit_error', 'message': 'rate limited', 'http_code': '429'}}"
         )
 
     async def fake_sleep(seconds):
         sleep_calls.append(seconds)
 
-    monkeypatch.setattr(ai_handler, "client", _build_fake_client(fake_create))
-    monkeypatch.setattr(ai_handler, "MODEL_NAME", "fake-model")
-    monkeypatch.setattr(ai_handler, "ENABLE_RESPONSE_FORMAT", True)
-    monkeypatch.setattr(app_config, "ENABLE_RESPONSE_FORMAT", True)
+    primary_client = _build_fake_client(primary_create)
+
     monkeypatch.setattr(ai_handler.asyncio, "sleep", fake_sleep)
 
-    result = asyncio.run(
-        ai_handler.get_ai_analysis(
-            {"商品信息": {"商品ID": "6", "商品标题": "测试商品6"}},
-            image_paths=[],
-            prompt_text="请输出 JSON",
+    with pytest.raises(_RateLimitError):
+        asyncio.run(
+            ai_handler._analyze_with_single_model(
+                primary_client,
+                "primary-model",
+                True,
+                {"商品信息": {"商品ID": "6", "商品标题": "测试商品6"}},
+                image_paths=[],
+                prompt_text="请输出 JSON",
+            )
         )
-    )
 
-    assert result["reason"] == "ok"
-    assert len(request_history) == 2
-    assert len(sleep_calls) == 1
-    assert 5.0 <= sleep_calls[0] <= 6.0
+    assert [name for name, _ in request_history] == ["primary"]
+    assert sleep_calls == []
 
 
 def test_get_ai_analysis_uses_first_json_object_when_model_returns_multiple_objects(

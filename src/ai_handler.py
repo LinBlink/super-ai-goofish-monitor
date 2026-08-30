@@ -40,7 +40,6 @@ from src.services.ai_request_compat import (
     RESPONSES_API_MODE,
     build_ai_request_params,
     create_ai_response_async,
-    get_retry_after_seconds,
     is_chat_completions_api_unsupported_error,
     is_json_output_unsupported_error,
     is_rate_limit_error,
@@ -351,7 +350,7 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
         except (openai.APIConnectionError, openai.APITimeoutError, openai.APIStatusError) as e:
             last_exc = e
             role = "主模型" if idx == 0 else f"兜底模型#{idx}"
-            safe_print(f"   [AI分析] {role} ({model_name}) 发生API/网络错误，切换下一模型: {e}")
+            safe_print(f"   [AI分析] {role} ({model_name}) 发生API/网络错误，切换下一模型: {e}", level="WARNING")
             continue
     if last_exc is not None:
         raise last_exc
@@ -540,23 +539,25 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                 safe_print(repr(e))
                 safe_print(traceback.format_exc())
                 safe_print("-------------------------------------\n")
+            # 速率限制(429)意味着该模型已到用量上限，原地重试只会长时间卡住
+            # （旧行为会指数退避至多 12 次、最长 5 小时），因此首次遇到就立即
+            # 抛出给外层多模型循环，切换到兜底模型。
+            if is_rate_limit_error(e):
+                safe_print(
+                    f"   [AI分析] 模型 {model_name} 触发速率限制(429)，立即切换兜底模型: {e}",
+                    level="ERROR",
+                )
+                raise
             safe_print(f"   [AI分析] 第{attempt + 1}次尝试AI调用失败: {e}")
             if attempt < max_retries - 1:
-                if is_rate_limit_error(e):
-                    wait_seconds = get_retry_after_seconds(e)
-                    reason = "速率限制(429)"
-                else:
-                    wait_seconds = None
-                    reason = "调用失败"
-                # 速率限制或一般调用失败：指数退避（带抖动），单次最长 5 小时。
-                if wait_seconds is None:
-                    wait_seconds = min(
-                        RATE_LIMIT_MAX_DELAY_SECONDS,
-                        RATE_LIMIT_BASE_DELAY_SECONDS * (2 ** attempt),
-                    )
+                # 非速率限制的一般调用失败：指数退避（带抖动），单次最长 5 小时。
+                wait_seconds = min(
+                    RATE_LIMIT_MAX_DELAY_SECONDS,
+                    RATE_LIMIT_BASE_DELAY_SECONDS * (2 ** attempt),
+                )
                 wait_seconds += random.uniform(0, wait_seconds * 0.2)
                 safe_print(
-                    f"   [AI分析] 已触发{reason}，将在 {wait_seconds:.0f} 秒后进行第{attempt + 2}次重试..."
+                    f"   [AI分析] 已触发调用失败，将在 {wait_seconds:.0f} 秒后进行第{attempt + 2}次重试..."
                 )
                 await asyncio.sleep(wait_seconds)
                 continue
@@ -584,7 +585,7 @@ async def screen_product_title(
             )
         except (openai.APIConnectionError, openai.APITimeoutError, openai.APIStatusError) as e:
             role = "主模型" if idx == 0 else f"兜底模型#{idx}"
-            safe_print(f"   [AI标题预筛] {role} ({model_name}) 发生API/网络错误，切换下一模型: {e}")
+            safe_print(f"   [AI标题预筛] {role} ({model_name}) 发生API/网络错误，切换下一模型: {e}", level="WARNING")
             continue
     # 所有模型均不可用（API/网络错误），保守地不跳过
     return True, ""
@@ -645,22 +646,23 @@ async def _screen_with_single_model(
             reason = str(parsed.get("reason", ""))[:200]
             return match, reason
         except Exception as exc:  # noqa: BLE001
+            # 速率限制(429)意味着该模型已到用量上限，立即抛出给外层多模型循环切换兜底模型，
+            # 避免在这个模型上长时间退避重试。
+            if is_rate_limit_error(exc):
+                safe_print(
+                    f"   [AI标题预筛] 模型 {model_name} 触发速率限制(429)，立即切换兜底模型: {exc}",
+                    level="ERROR",
+                )
+                raise
             safe_print(f"   [AI标题预筛] 第{attempt + 1}次调用失败: {exc}")
             if attempt < max_retries - 1:
-                if is_rate_limit_error(exc):
-                    wait_seconds = get_retry_after_seconds(exc)
-                    reason = "速率限制(429)"
-                else:
-                    wait_seconds = None
-                    reason = "调用失败"
-                if wait_seconds is None:
-                    wait_seconds = min(
-                        RATE_LIMIT_MAX_DELAY_SECONDS,
-                        RATE_LIMIT_BASE_DELAY_SECONDS * (2 ** attempt),
-                    )
+                wait_seconds = min(
+                    RATE_LIMIT_MAX_DELAY_SECONDS,
+                    RATE_LIMIT_BASE_DELAY_SECONDS * (2 ** attempt),
+                )
                 wait_seconds += random.uniform(0, wait_seconds * 0.2)
                 safe_print(
-                    f"   [AI标题预筛] 已触发{reason}，将在 {wait_seconds:.0f} 秒后进行第{attempt + 2}次重试..."
+                    f"   [AI标题预筛] 已触发调用失败，将在 {wait_seconds:.0f} 秒后进行第{attempt + 2}次重试..."
                 )
                 await asyncio.sleep(wait_seconds)
                 continue
