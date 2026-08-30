@@ -6,8 +6,10 @@ import random
 import re
 import sys
 import shutil
+import time
 import traceback
 from datetime import datetime, timedelta
+from typing import Dict
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 import openai
@@ -68,6 +70,55 @@ DEFAULT_IMAGE_DOWNLOAD_CONCURRENCY = max(
 RATE_LIMIT_BASE_DELAY_SECONDS = 5
 # 单次退避上限：5 小时。速率限制/调用失败时按指数增长，最久退避到该值。
 RATE_LIMIT_MAX_DELAY_SECONDS = 5 * 60 * 60
+
+# 非速率限制类调用失败的单次退避上限（如服务不可用/超时），不应等 5 小时。
+GENERAL_FAILURE_MAX_BACKOFF_SECONDS = 60
+# 单次 AI 请求超时秒数。超时即视作失败进入重试/兜底分支。
+AI_CALL_TIMEOUT_SECONDS = int(os.getenv("AI_CALL_TIMEOUT_SECONDS", "60"))
+# 熔断阈值：连续失败 N 次后熔断一段时间，期间直接跳过该模型的调用。
+AI_CIRCUIT_FAILURE_THRESHOLD = int(os.getenv("AI_CIRCUIT_FAILURE_THRESHOLD", "3"))
+# 熔断冷却时间（秒）：熔断开启后多久进入半开状态。
+AI_CIRCUIT_COOLDOWN_SECONDS = int(os.getenv("AI_CIRCUIT_COOLDOWN_SECONDS", "300"))
+
+
+class ModelCircuitOpenError(Exception):
+    """模型熔断开启：跳过当前调用，避免服务不可用期间持续空转。"""
+
+
+class _ModelCircuitBreaker:
+    """按模型名跟踪连续失败次数，超过阈值后熔断一段时间。"""
+
+    def __init__(self, threshold: int, cooldown_seconds: int) -> None:
+        self._threshold = threshold
+        self._cooldown = cooldown_seconds
+        self._state: Dict[str, Dict[str, float]] = {}
+
+    def is_open(self, model_name: str) -> bool:
+        info = self._state.get(model_name)
+        if not info:
+            return False
+        failures = info.get("failures", 0)
+        if failures < self._threshold:
+            return False
+        last_failure = info.get("last_failure", 0.0)
+        if (time.monotonic() - last_failure) >= self._cooldown:
+            # 进入半开：允许下一次调用尝试。
+            return False
+        return True
+
+    def record_failure(self, model_name: str) -> None:
+        info = self._state.setdefault(model_name, {"failures": 0, "last_failure": 0.0})
+        info["failures"] = info.get("failures", 0) + 1
+        info["last_failure"] = time.monotonic()
+
+    def record_success(self, model_name: str) -> None:
+        self._state.pop(model_name, None)
+
+
+_MODEL_CIRCUIT = _ModelCircuitBreaker(
+    threshold=AI_CIRCUIT_FAILURE_THRESHOLD,
+    cooldown_seconds=AI_CIRCUIT_COOLDOWN_SECONDS,
+)
 
 
 def safe_print(text, level: str = "INFO"):
@@ -344,6 +395,14 @@ async def get_ai_analysis(product_data, image_paths=None, prompt_text=""):
         return None
     last_exc = None
     for idx, (client, model_name, enable_response_format) in enumerate(runners):
+        # 熔断开启：模型最近连续失败次数过多，冷却期间跳过本次调用。
+        if _MODEL_CIRCUIT.is_open(model_name):
+            role = "主模型" if idx == 0 else f"兜底模型#{idx}"
+            safe_print(
+                f"   [AI分析] {role} ({model_name}) 处于熔断冷却中，跳过本次调用",
+                level="WARNING",
+            )
+            raise ModelCircuitOpenError(f"{model_name} 熔断中")
         try:
             return await _analyze_with_single_model(
                 client, model_name, enable_response_format, product_data, image_paths, prompt_text
@@ -487,10 +546,13 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                 )
                 safe_print("-----------------------------------\n")
 
-            response = await create_ai_response_async(
-                client,
-                api_mode,
-                request_params,
+            response = await asyncio.wait_for(
+                create_ai_response_async(
+                    client,
+                    api_mode,
+                    request_params,
+                ),
+                timeout=AI_CALL_TIMEOUT_SECONDS,
             )
             ai_response_content = extract_ai_response_content(response)
 
@@ -511,6 +573,7 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                 # 验证响应格式
                 if validate_ai_response_format(parsed_response):
                     safe_print(f"   [AI分析] 第{attempt + 1}次尝试成功，响应格式验证通过")
+                    _MODEL_CIRCUIT.record_success(model_name)
                     return parsed_response
                 safe_print(f"   [AI分析] 第{attempt + 1}次尝试格式验证失败")
                 consecutive_parse_failures += 1
@@ -600,10 +663,12 @@ async def _analyze_with_single_model(client, model_name, enable_response_format,
                 )
                 raise
             safe_print(f"   [AI分析] 第{attempt + 1}次尝试AI调用失败: {e}")
+            _MODEL_CIRCUIT.record_failure(model_name)
             if attempt < max_retries - 1:
-                # 非速率限制的一般调用失败：指数退避（带抖动），单次最长 5 小时。
+                # 非速率限制的一般调用失败：指数退避（带抖动），单次最长 GENERAL_FAILURE_MAX_BACKOFF_SECONDS。
+                # 与限流 5h 不同：服务不可用/超时不应每次等几小时。
                 wait_seconds = min(
-                    RATE_LIMIT_MAX_DELAY_SECONDS,
+                    GENERAL_FAILURE_MAX_BACKOFF_SECONDS,
                     RATE_LIMIT_BASE_DELAY_SECONDS * (2 ** attempt),
                 )
                 wait_seconds += random.uniform(0, wait_seconds * 0.2)
@@ -630,6 +695,14 @@ async def screen_product_title(
     if not runners:
         return True, ""
     for idx, (client, model_name, enable_response_format) in enumerate(runners):
+        # 熔断开启：冷却期间跳过 AI 预筛，避免大批商品空转。
+        if _MODEL_CIRCUIT.is_open(model_name):
+            role = "主模型" if idx == 0 else f"兜底模型#{idx}"
+            safe_print(
+                f"   [AI标题预筛] {role} ({model_name}) 处于熔断冷却中，保守不跳过",
+                level="WARNING",
+            )
+            return True, ""
         try:
             return await _screen_with_single_model(
                 client, model_name, enable_response_format, title, keyword, requirements
@@ -703,7 +776,10 @@ async def _screen_with_single_model(
             if thinking_extra:
                 request_params["extra_body"] = thinking_extra
 
-            response = await create_ai_response_async(client, api_mode, request_params)
+            response = await asyncio.wait_for(
+                create_ai_response_async(client, api_mode, request_params),
+                timeout=AI_CALL_TIMEOUT_SECONDS,
+            )
             content = extract_ai_response_content(response)
             try:
                 parsed = parse_ai_response_json(content)
@@ -726,6 +802,7 @@ async def _screen_with_single_model(
                 match_val = str(match_val).strip().lower() in {"true", "1", "是", "yes"}
             match = bool(match_val)
             reason = str(parsed.get("reason", ""))[:200]
+            _MODEL_CIRCUIT.record_success(model_name)
             return match, reason
         except Exception as exc:  # noqa: BLE001
             # 速率限制(429)意味着该模型已到用量上限，立即抛出给外层多模型循环切换兜底模型，
@@ -738,10 +815,11 @@ async def _screen_with_single_model(
                 raise
             if isinstance(exc, ModelRepeatedParseError):
                 raise
+            _MODEL_CIRCUIT.record_failure(model_name)
             safe_print(f"   [AI标题预筛] 第{attempt + 1}次调用失败: {exc}")
             if attempt < max_retries - 1:
                 wait_seconds = min(
-                    RATE_LIMIT_MAX_DELAY_SECONDS,
+                    GENERAL_FAILURE_MAX_BACKOFF_SECONDS,
                     RATE_LIMIT_BASE_DELAY_SECONDS * (2 ** attempt),
                 )
                 wait_seconds += random.uniform(0, wait_seconds * 0.2)
