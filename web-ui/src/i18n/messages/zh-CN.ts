@@ -205,6 +205,16 @@ const zhCN = {
     dialogDescription: '此操作不可恢复，确定要清空当前任务日志吗？',
     confirmClear: '确认清空',
     trimmedNotice: '...日志过长已截断，仅保留最新内容...',
+    emptyAfterFilter: '当前等级没有匹配的日志行。',
+    filterLevel: '等级过滤',
+    levels: {
+      all: '全部',
+      debug: 'DEBUG',
+      info: 'INFO',
+      warning: 'WARNING',
+      error: 'ERROR',
+      critical: 'CRITICAL',
+    },
   },
   settings: {
     title: '系统设置',

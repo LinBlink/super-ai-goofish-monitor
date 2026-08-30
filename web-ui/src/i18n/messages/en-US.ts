@@ -205,6 +205,16 @@ const enUS = {
     dialogDescription: 'This action cannot be undone. Clear the current task log?',
     confirmClear: 'Clear',
     trimmedNotice: '...log output was truncated to keep only the newest content...',
+    emptyAfterFilter: 'No log lines match the current level filter.',
+    filterLevel: 'Level Filter',
+    levels: {
+      all: 'All',
+      debug: 'DEBUG',
+      info: 'INFO',
+      warning: 'WARNING',
+      error: 'ERROR',
+      critical: 'CRITICAL',
+    },
   },
   settings: {
     title: 'Settings',
