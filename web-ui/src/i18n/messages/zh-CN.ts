@@ -2,7 +2,7 @@ import zhCNExtra from '@/i18n/messages/zh-CN-extra'
 
 const zhCN = {
   app: {
-    name: '闲鱼智能监控',
+    name: '超级AI闲鱼监控器（SUPER AI GOOFISH MONITOR）',
   },
   locale: {
     switchLabel: '切换语言',
@@ -65,6 +65,8 @@ const zhCN = {
     openPrompts: '打开 Prompt 管理',
     searchUnavailable: '任务搜索仅在监控概览页可用...',
     accountManagement: '账号管理',
+    brandName: '超级AI闲鱼监控器',
+    brandNameEn: 'SUPER AI GOOFISH MONITOR',
   },
   sidebar: {
     dashboard: '监控概览',
@@ -109,6 +111,18 @@ const zhCN = {
       noHistory: '暂无历史数据',
       sampleLabel: '样本 {count} 件',
       updatedAt: '更新于 {time}',
+    },
+    deals: {
+      title: '持续下跌可抄底',
+      description: '在监控周期内价格持续走低、累计跌幅明显的商品，按跌幅倒序排列。',
+      empty: '暂无持续下跌的商品，需要更多监控数据才会出现抄底机会。',
+      openItem: '打开商品',
+      declinePercent: '累计下跌 {percent}%',
+      snapshotLabel: '样本 {count} 次',
+      priceLabel: '抄底价',
+      highestLabel: '周期最高',
+      lastSeen: '最近监测于 {time}',
+      samplesShort: '{count} 次',
     },
   },
   results: {

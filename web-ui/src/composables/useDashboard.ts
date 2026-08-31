@@ -23,6 +23,7 @@ export function useDashboard() {
 
   const taskSummaries = computed(() => snapshot.value?.task_summaries || [])
   const activities = computed(() => snapshot.value?.recent_activities || [])
+  const decliningDeals = computed(() => snapshot.value?.declining_deals || [])
 
   const stats = computed(() => {
     const summary = snapshot.value?.summary
@@ -50,6 +51,7 @@ export function useDashboard() {
     stats,
     taskSummaries,
     activities,
+    decliningDeals,
     isLoading,
     error,
     fetchSummary,

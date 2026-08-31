@@ -6,13 +6,13 @@ import { useDashboard } from '@/composables/useDashboard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PriceTrendChart from '@/components/results/PriceTrendChart.vue'
-import { LayoutDashboard, Wallet, ListTodo, TrendingUp, Database } from 'lucide-vue-next'
+import { LayoutDashboard, Wallet, ListTodo, TrendingUp, Database, TrendingDown, ExternalLink } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { StatCard } from '@/components/ui/stat-card'
 
 const router = useRouter()
 const { t } = useI18n()
-const { taskSummaries, error } = useDashboard()
+const { taskSummaries, decliningDeals, error } = useDashboard()
 
 const stats = computed(() => {
   const list = taskSummaries.value
@@ -35,6 +35,12 @@ const priceOverviewRows = computed(() =>
 function openTaskPrice(item: { filename: string | null }) {
   if (item.filename) {
     router.push({ name: 'Results', query: { file: item.filename } })
+  }
+}
+
+function openDealLink(link: string) {
+  if (link) {
+    window.open(link, '_blank', 'noopener,noreferrer')
   }
 }
 
@@ -87,6 +93,56 @@ function goCreateTask() {
         :hint="t('dashboard.stats.samplesHint')"
       />
     </div>
+
+    <Card class="app-card border-none">
+      <CardHeader class="border-b border-rose-100/70 pb-5">
+        <CardTitle class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <TrendingDown class="w-5 h-5 text-rose-500" />
+          {{ t('dashboard.deals.title') }}
+        </CardTitle>
+        <p class="mt-1 text-sm text-slate-500">{{ t('dashboard.deals.description') }}</p>
+      </CardHeader>
+      <CardContent class="p-6">
+        <div v-if="decliningDeals.length === 0" class="px-6 py-10 text-center text-sm text-slate-500">
+          {{ t('dashboard.deals.empty') }}
+        </div>
+        <div v-else class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <div
+            v-for="deal in decliningDeals"
+            :key="deal.item_id"
+            class="app-card border-none p-4 hover:border-rose-200 transition-colors"
+            :class="deal.link ? 'cursor-pointer' : 'cursor-default'"
+            @click="openDealLink(deal.link)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-500/80">{{ deal.task_name }}</p>
+                <p class="mt-0.5 text-sm font-bold text-slate-800 line-clamp-2" :title="deal.title">{{ deal.title || deal.item_id }}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ t('dashboard.deals.priceLabel') }}</p>
+                <p class="text-xl font-black text-rose-500 leading-tight">¥{{ deal.latest_price_display || deal.latest_price }}</p>
+              </div>
+            </div>
+            <div class="mt-3 flex items-end justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 text-rose-500">
+                  <TrendingDown class="w-4 h-4" />
+                  <span class="text-sm font-black">{{ t('dashboard.deals.declinePercent', { percent: Math.abs(deal.decline_percent).toFixed(1) }) }}</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-500">
+                  {{ t('dashboard.deals.highestLabel') }} ¥{{ deal.highest_price }}
+                  <span class="mx-1 text-slate-300">·</span>
+                  {{ t('dashboard.deals.samplesShort', { count: deal.snapshots_count }) }}
+                </p>
+              </div>
+              <ExternalLink v-if="deal.link" class="w-4 h-4 text-slate-400 shrink-0" />
+            </div>
+            <PriceTrendChart class="mt-3" :points="deal.trend.map((price, index, arr) => ({ day: String(index + 1), avg_price: price, median_price: price, min_price: price }))" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <Card class="app-card border-none">
       <CardHeader class="border-b border-slate-100/60 pb-5">

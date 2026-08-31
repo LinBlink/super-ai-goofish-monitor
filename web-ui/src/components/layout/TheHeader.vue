@@ -4,8 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DashboardTaskSearch from '@/components/layout/DashboardTaskSearch.vue'
 import LocaleToggle from '@/components/layout/LocaleToggle.vue'
+import LightningFishIcon from '@/components/icons/LightningFishIcon.vue'
 import { 
-  Zap, 
   Bell, 
   Search, 
   UserCircle,
@@ -43,14 +43,15 @@ function goPrompts() {
     <!-- Brand Logo -->
     <RouterLink
       to="/dashboard"
-      class="flex items-center gap-2 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      class="flex items-center gap-2 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-w-0"
       :aria-label="t('header.goHome')"
     >
-      <div class="brand-gradient flex h-9 w-9 items-center justify-center rounded-xl shadow-lg shadow-primary/30 transition-transform group-hover:rotate-12">
-        <Zap class="h-5 w-5 text-white fill-white" />
+      <div class="brand-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-lg shadow-primary/30 transition-transform group-hover:rotate-12">
+        <LightningFishIcon :size="28" className="drop-shadow-sm" />
       </div>
-      <h1 class="text-lg font-black tracking-tighter text-slate-800">
-        AI <span class="gradient-text">Xianyu</span> Hunter
+      <h1 class="text-base sm:text-lg font-black tracking-tighter text-slate-800 whitespace-nowrap leading-tight">
+        <span class="bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 bg-clip-text text-transparent">{{ t('header.brandName') }}</span>
+        <span class="hidden sm:inline text-slate-400 mx-1 font-medium">（</span><span class="hidden sm:inline text-slate-500 font-bold tracking-tight">{{ t('header.brandNameEn') }}</span><span class="hidden sm:inline text-slate-400 mx-1 font-medium">）</span>
       </h1>
       <Badge class="ml-2 hidden bg-gradient-to-r from-primary to-violet-500 text-[10px] font-bold uppercase tracking-widest text-white sm:flex">
         PRO

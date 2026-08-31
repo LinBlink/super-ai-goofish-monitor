@@ -2,7 +2,7 @@ import enUSExtra from '@/i18n/messages/en-US-extra'
 
 const enUS = {
   app: {
-    name: 'Goofish Monitor',
+    name: 'Super AI Goofish Monitor (SUPER AI GOOFISH MONITOR)',
   },
   locale: {
     switchLabel: 'Switch language',
@@ -65,6 +65,8 @@ const enUS = {
     openPrompts: 'Open prompt manager',
     searchUnavailable: 'Task search is only available on the dashboard...',
     accountManagement: 'Account Management',
+    brandName: 'Super AI Goofish Monitor',
+    brandNameEn: 'SUPER AI GOOFISH MONITOR',
   },
   sidebar: {
     dashboard: 'Dashboard',
@@ -109,6 +111,18 @@ const enUS = {
       noHistory: 'No history yet',
       sampleLabel: '{count} samples',
       updatedAt: 'Updated {time}',
+    },
+    deals: {
+      title: 'Persistent Drops — Buy-the-Dip Candidates',
+      description: 'Items whose price kept falling across recent monitoring runs, ranked by total decline.',
+      empty: 'No persistent drops yet. Keep monitoring to surface dip opportunities.',
+      openItem: 'Open item',
+      declinePercent: '{percent}% drop',
+      snapshotLabel: '{count} snapshots',
+      priceLabel: 'Dip price',
+      highestLabel: 'Period high',
+      lastSeen: 'Last seen {time}',
+      samplesShort: '{count}',
     },
   },
   results: {

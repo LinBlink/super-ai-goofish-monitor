@@ -51,9 +51,26 @@ export interface DashboardActivity {
   timestamp: string | null
 }
 
+export interface DashboardDeal {
+  keyword: string
+  task_name: string
+  item_id: string
+  title: string
+  link: string
+  latest_price: number
+  latest_price_display: string
+  highest_price: number
+  decline_percent: number
+  snapshots_count: number
+  trend: number[]
+  first_seen_at: string | null
+  last_seen_at: string | null
+}
+
 export interface DashboardSnapshot {
   summary: DashboardSummary
   task_summaries: DashboardTaskSummary[]
   recent_activities: DashboardActivity[]
+  declining_deals: DashboardDeal[]
   focus_file: string | null
 }

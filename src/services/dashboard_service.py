@@ -4,6 +4,7 @@ Dashboard 聚合服务
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from src.domain.models.task import Task
@@ -16,6 +17,7 @@ from src.services.dashboard_payloads import (
     sort_key_by_latest_time,
     summarize_result_file,
 )
+from src.services.price_history_service import find_declining_deals
 from src.services.result_storage_service import list_result_filenames
 
 MAX_RECENT_ACTIVITIES = 8
@@ -57,6 +59,7 @@ async def build_dashboard_snapshot(tasks: list[Task]) -> dict[str, Any]:
 
     summary_list = sorted(task_summaries.values(), key=sort_key_by_latest_time, reverse=True)
     focus_file = next((item["filename"] for item in summary_list if item.get("filename")), None)
+    declining_deals = await asyncio.to_thread(find_declining_deals)
     return {
         "summary": _build_summary_metrics(tasks, summary_list, latest_updated_at),
         "task_summaries": summary_list,
@@ -65,5 +68,6 @@ async def build_dashboard_snapshot(tasks: list[Task]) -> dict[str, Any]:
             key=sort_key_by_activity_time,
             reverse=True,
         )[:MAX_RECENT_ACTIVITIES],
+        "declining_deals": declining_deals,
         "focus_file": focus_file,
     }
