@@ -2,7 +2,7 @@ import zhCNExtra from '@/i18n/messages/zh-CN-extra'
 
 const zhCN = {
   app: {
-    name: '超级AI闲鱼监控器（SUPER AI GOOFISH MONITOR）',
+    name: '超级AI闲鱼监控器',
   },
   locale: {
     switchLabel: '切换语言',
@@ -66,7 +66,6 @@ const zhCN = {
     searchUnavailable: '任务搜索仅在监控概览页可用...',
     accountManagement: '账号管理',
     brandName: '超级AI闲鱼监控器',
-    brandNameEn: 'SUPER AI GOOFISH MONITOR',
   },
   sidebar: {
     dashboard: '监控概览',

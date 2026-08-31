@@ -2,7 +2,7 @@ import enUSExtra from '@/i18n/messages/en-US-extra'
 
 const enUS = {
   app: {
-    name: 'Super AI Goofish Monitor (SUPER AI GOOFISH MONITOR)',
+    name: 'Super AI Goofish Monitor',
   },
   locale: {
     switchLabel: 'Switch language',
@@ -66,7 +66,6 @@ const enUS = {
     searchUnavailable: 'Task search is only available on the dashboard...',
     accountManagement: 'Account Management',
     brandName: 'Super AI Goofish Monitor',
-    brandNameEn: 'SUPER AI GOOFISH MONITOR',
   },
   sidebar: {
     dashboard: 'Dashboard',

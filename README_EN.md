@@ -1,351 +1,255 @@
-# Xianyu Intelligent Monitor Bot (Evolved Fork)
+# Super AI Goofish Monitor
 
 [中文](README.md) ｜ [English]
 
-This project is forked from [Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor) and builds on its Playwright + AI monitoring core with a series of ongoing changes: primary storage moved from JSON/JSONL to SQLite, blacklist matching moved from "post-crawl filtering" to "crawl-time interception", per-channel notification toggles, a smart sort for results, and automatic backoff/retry when the AI provider rate-limits requests. The core idea is unchanged — concurrent multi-task Xianyu monitoring backed by multimodal AI analysis and a web management UI.
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> A Playwright + multimodal-AI driven Goofish (Xianyu) monitor and smart-filtering platform with concurrent multi-task scheduling and a full-featured Web UI.
+
+## Origins
+
+This repository is **no longer a fork** of [Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor). It started as a direct `git clone` of the upstream and has since evolved into an independent project: SQLite primary storage, AI-call hardening, price-trend analytics, brand visual identity, and documentation are all maintained here.
+
+The upstream remote is kept as a reference (`upstream`) but every change ships from this repository.
 
 ## Core Features
 
-- **Web Visual Management**: Task management, account management, AI criteria editing, run logs, results browsing — all from the browser, no CLI required
-- **AI-Driven**: Describe your requirement in natural language to generate analysis criteria; the multimodal model judges each item against text and images
-- **Multi-Task Concurrency**: Independent configuration for keywords, prices, filters, prompts, and bound accounts per task
-- **SQLite as Primary Storage**: Tasks, results, and price history are persisted in one embedded database instead of repeatedly scanning `jsonl`
-- **Advanced Filtering**: Free shipping, new listing time range, province/city/district filtering
-- **Two-Level Blacklist**: A global blacklist applies to every task; a per-task blacklist only affects one task. Matches are intercepted during crawling itself — no detail fetch, no save, no notification
-- **Instant Notifications**: Supports ntfy.sh, WeChat Work (企业微信), Bark, Telegram, Email (SMTP), Webhook — each channel can be toggled on/off independently
-- **Smart Result Sorting**: AI-recommended items surface first, with the rest ordered by price ascending
-- **Scheduled Tasks**: Cron expression configuration for periodic tasks
-- **Account & Proxy Rotation**: Multi-account management, task-account binding, proxy pool rotation with failure retry to reduce the odds of being rate-limited
-- **AI Rate-Limit Self-Healing**: 429 responses trigger automatic exponential backoff and retry, no manual intervention needed
-- **Multi-Model Fallback**: AI settings support multiple models — the first is the primary and the rest are fallbacks. On API/network errors the primary automatically fails over to the next model; each model can be tested individually
-- **Scheduler Master Switch**: Pause or resume all scheduled triggers from the system settings, handy for temporarily disabling scheduling during maintenance
-- **Docker Deployment**: One-click containerized deployment with Chromium built in
+- **Full Web Management**: Tasks, accounts, AI criteria, run logs, results — everything in the browser, no CLI required.
+- **Multimodal AI Judging**: Describe your requirement in natural language; the AI combines item text, images, and seller metadata to decide whether the listing is worth your attention.
+- **Concurrent Multi-Task Scheduling**: Each task has its own keywords, price range, filters, prompt, account binding, and cron rule.
+- **Two-Level Blacklist (Crawl-Time Interception)**: Global blacklist applies to every task; per-task blacklist applies to one task. Matches are dropped during the crawl itself — no detail fetch, no save, no notification.
+- **Multi-Model AI Fallback**: Configure multiple models in `System Settings → AI Model`. The first is primary, the rest are fallbacks. On API/network errors the primary automatically fails over to the next; each model can be tested individually.
+- **AI Call Hardening**: 429 → immediate failover to the next model; consecutive parse failures → immediate failover; service unreachable → per-call timeout (default 60s) + circuit breaker (default: 3 consecutive failures → 5-minute cooldown); vendor-specific "thinking-disable" parameters are auto-injected.
+- **Per-Channel Notification Toggles**: ntfy / WeCom / Bark / Telegram / Email (SMTP) / Webhook — each can be enabled independently.
+- **Price-Trend & Buy-the-Dip**: The dashboard surfaces "Persistent Drops — Buy-the-Dip Candidates" with total decline, current dip price, period high, and a mini price curve. Click to open the listing directly.
+- **Smart Result Sorting + Date Filter**: AI-recommended items float to the top; the rest are sorted by price ascending. A quick date filter (All / 1 day / 3 days / 7 days) sits next to it.
+- **Account & Proxy Rotation**: Multi-account pool with automatic switching on failure; proxy pool rotation further lowers the risk of being rate-limited.
+- **Scheduler Master Switch**: Pause all scheduled triggers from the system settings during maintenance windows.
+- **Docker Deployment**: Built-in Chromium; one container, ready to run.
 
 ## Screenshots
 
-![Monitoring Overview](static/img.png)
-![Task Management](static/img_1.png)
-![Result Viewer](static/img_2.png)
-![Notification Settings](static/img_3.png)
+| Dashboard (dip candidates + per-task historical avg) | Task Management |
+| --- | --- |
+| ![Dashboard](docs/screenshots/dashboard-top.png) | ![Tasks](docs/screenshots/tasks-overview.png) |
+
+| Results (market snapshot + price trend) | System Settings (AI Models) |
+| --- | --- |
+| ![Results](docs/screenshots/results-overview.png) | ![Settings](docs/screenshots/settings-overview.png) |
+
+| Logs (level-filtered) | Account Management |
+| --- | --- |
+| ![Logs](docs/screenshots/logs-overview.png) | ![Accounts](docs/screenshots/accounts-overview.png) |
+
+A full-page dashboard capture lives at [`docs/screenshots/dashboard-overview.png`](docs/screenshots/dashboard-overview.png).
 
 ## Quick Start
 
-### Requirements
-
-- Python 3.10+
-- Node.js + npm (`Node v20.18.3` has been verified to complete the frontend build)
-- Playwright CLI and Chromium. Before the first local run, install them with `python3 -m pip install playwright && python3 -m playwright install chromium`
-- Chrome or Edge on desktop systems. On Linux, Chromium also works. `start.sh` checks this prerequisite before continuing
+### 🐳 Docker (Recommended)
 
 ```bash
-git clone https://github.com/LinBlink/advanced-ai-goofish-monitor
-cd advanced-ai-goofish-monitor
+git clone https://github.com/LinBlink/super-ai-goofish-monitor.git
+cd super-ai-goofish-monitor
 cp .env.example .env
+vim .env   # fill in OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_MODEL_NAME, etc.
+docker compose up -d
+docker compose logs -f app
 ```
 
-### Minimum Configuration
+- Default Web UI: `http://127.0.0.1:8000`
+- The image bundles Chromium — no browser installation on the host
+- Update image: `docker compose pull && docker compose up -d`
+- If you change `SERVER_PORT` in `.env`, update the `ports` mapping in `docker-compose.yaml` as well
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `OPENAI_API_KEY` | AI model API key | Yes |
-| `OPENAI_BASE_URL` | OpenAI-compatible API base URL | Yes |
-| `OPENAI_MODEL_NAME` | Model name with image input support | Yes |
-| `WEB_USERNAME` / `WEB_PASSWORD` | Web UI login credentials, default `admin/admin123` | No |
+Persistent directories:
 
-See "Configuration" below for the rest.
+| Path | Purpose |
+| --- | --- |
+| `data/` | SQLite primary store (tasks, results, price history) |
+| `state/` | Goofish account login-state JSON |
+| `prompts/` | Task prompt files |
+| `logs/` | Runtime logs |
+| `images/` | Product image cache (cleaned after each task by default) |
+| `config.json`, `jsonl/`, `price_history/` | Legacy data sources (imported once on first startup) |
 
-### Start Locally
+### Run From Source
+
+Requirements: Python 3.10+, Node.js (`v20.18.3` verified), Playwright CLI + Chromium:
 
 ```bash
+git clone https://github.com/LinBlink/super-ai-goofish-monitor.git
+cd super-ai-goofish-monitor
+cp .env.example .env
 chmod +x start.sh
 ./start.sh
 ```
 
-`start.sh` first validates the Playwright CLI and browser prerequisites. Once they are available, it installs project dependencies, builds the frontend, copies the artifacts, and starts the backend.
+`start.sh` first validates Playwright/Chromium prerequisites, then installs dependencies, builds the frontend, copies artifacts, and starts the backend at `http://localhost:8000` (API docs at `http://localhost:8000/docs`).
 
-### First-Time Setup
-
-1. Open the default Web UI at `http://127.0.0.1:8000` and sign in.
-2. Go to "Xianyu Account Management" and use the [Chrome Extension](https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa) to export and paste the Xianyu login-state JSON.
-3. Login-state files are stored in `state/`, for example `state/acc_1.json`.
-4. Go back to "Task Management", create a task, bind an account if needed, and run it.
-
-### Create Your First Task
-
-- `AI mode`: fill in the requirement description. Submission opens a separate progress dialog while the criteria are generated asynchronously.
-- `Keyword mode`: provide keyword rules and the task is created immediately.
-- `Region filter`: now uses a province / city / district selector backed by an embedded Xianyu page snapshot instead of manual text input.
-
-## 🐳 Docker Deployment (Recommended)
+Manual split:
 
 ```bash
-git clone https://github.com/LinBlink/advanced-ai-goofish-monitor && cd advanced-ai-goofish-monitor
-cp .env.example .env
-vim .env # fill in the required values
-docker compose up -d
-docker compose logs -f app
-docker compose down
+python -m src.app                              # backend
+cd web-ui && npm install && npm run dev        # frontend dev server
+# production build: cd web-ui && npm run build  (artifacts copied to repo-root dist/)
 ```
 
-- Default Web UI: `http://127.0.0.1:8000`
-- The published Docker image already includes Chromium, so no extra browser install is required on the host.
-- `docker-compose.yaml` still pulls the upstream image `ghcr.io/usagi-org/ai-goofish:latest` by default (this fork does not publish its own image yet). If you need an image that includes this fork's changes, see "Build the Image Locally" below.
-- Update image: `docker compose pull && docker compose up -d`
-- If you change `SERVER_PORT` in `.env`, update the `ports` mapping in `docker-compose.yaml` as well.
-- `docker-compose.yaml` now mounts the primary SQLite database directory as `./data:/app/data`, with the default database file at `data/app.sqlite3`
-- These paths are persisted by default:
-  - `data/` for the SQLite primary store (tasks, results, price history)
-  - `state/` for login-state cookie files
-  - `prompts/` for task prompt files
-  - `logs/` for runtime logs
-  - `images/` for downloaded product images and per-task temporary image folders
-  - `config.json`, `jsonl/`, and `price_history/` as legacy sources for the first SQLite migration
+## First Run
 
-### Build the Image Locally
+1. Open `http://127.0.0.1:8000` and sign in with the default `admin / admin123`.
+2. Open **Accounts**, follow the [Chrome Extension](https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa) to export the Goofish login-state JSON, and paste it. The file is saved under `state/acc_1.json`.
+3. Open **Tasks → Create Task**:
+   - **AI mode**: enter the requirement description; a background job generates the criteria and a separate progress dialog shows its status.
+   - **Keyword mode**: provide keyword rules; the task is created immediately.
+4. Configure AI in **System Settings → AI Model** and click **Test Connection** for each model.
+5. Hit **Start** on the task row; matching items flow into the enabled notification channels.
 
-To run this fork's latest changes without waiting for an upstream image update, build it yourself:
-
-```bash
-docker build -f Dockerfile.release -t ai-goofish-monitor:local .
-APP_IMAGE=ai-goofish-monitor:local docker compose up -d
-```
-
-`Dockerfile.release` builds on top of the upstream `ghcr.io/usagi-org/ai-goofish-base:latest` base image (which bundles Playwright/Chromium and other system dependencies) and only rebuilds the frontend and application layers, so it's fairly quick.
-
-### Storage and Migration
-
-- SQLite is now the online primary storage, with the default path `data/app.sqlite3`
-- You can override the database path with `APP_DATABASE_FILE`; Docker sets it to `/app/data/app.sqlite3`
-- On startup, the app initializes the schema and tries to import existing data once from legacy `config.json`, `jsonl/`, and `price_history/`
-- `state/`, `prompts/`, `logs/`, and `images/` remain filesystem-based and are not stored in SQLite
-- Product images are temporarily downloaded to `images/task_images_<task_name>/` and are normally cleaned up when the task finishes
-- After the first upgrade and after verifying the database contents in `data/app.sqlite3`, you can decide whether to keep the legacy `config.json`, `jsonl/`, and `price_history/` mounts
-
-## User Guide
+## Feature Tour
 
 <details>
-<summary>Click to expand Web UI usage notes</summary>
+<summary>Dashboard</summary>
 
-### Task Management
-
-- Supports AI creation, keyword rules, price range, new listing filters, region filters, account binding, and cron scheduling.
-- AI task creation runs as a background job and shows a dedicated progress dialog after submission.
-- Region filtering can greatly reduce results, so leaving it empty is the safer default.
-
-### Account Management
-
-- Import, update, and delete Xianyu login states.
-- Each task can bind a specific account or leave account selection to the system.
-- With account rotation enabled, the system automatically switches between multiple login-state files (`*.json`) stored in `ACCOUNT_STATE_DIR` (default `state/`) to lower the risk of a single account being flagged.
-
-### Results and Logs
-
-- The results page and export endpoints now query SQLite instead of directly scanning `jsonl` files.
-- Sort by crawl time, publish time, price (ascending/descending), or keyword-hit count, plus a "Smart" sort that puts AI-recommended items first and orders the rest by price ascending.
-- The logs page is the first place to inspect login-state expiry, anti-bot issues, or AI call failures.
-
-### System Settings
-
-- View system status, edit prompts, and adjust proxy / rotation-related settings.
-- The "Global Blacklist" tab manages a crawl-time blacklist that applies across every task: one keyword per line (or comma-separated), with optional `re:`-prefixed regex rules (e.g. `re:\b(used|new)\b`). Matched items are skipped during crawling itself — no detail fetch, no save, no notification.
+- **Three stat cards**: total monitored tasks, tasks with price history, cumulative price-history samples.
+- **Persistent Drops — Buy-the-Dip Candidates**: scans every snapshot within a 30-day window, surfaces items whose last 3 prices are strictly decreasing **and** total decline ≥ 10%, ranked by decline magnitude. Each card shows the dip price, period high, snapshot count, and a mini price curve. Click to open the listing in a new tab.
+- **Latest Historical Average Price by Task**: per-task windowed average with a daily price-trend chart. Click to open the task's results page.
+- **System status**: realtime backend connection indicator at the bottom of the sidebar.
 
 </details>
 
-## Developer Guide
-
-### Local Development
-
-```bash
-# backend
-python -m src.app
-# or
-uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
-
-# frontend
-cd web-ui
-npm install
-npm run dev
-```
-
-- FastAPI initializes SQLite on startup and performs the one-time legacy import from `config.json/jsonl/price_history` when needed
-- `spider_v2.py` now loads tasks from SQLite by default; JSON config is only used when `--config <path>` is passed explicitly
-- The default local database path is `data/app.sqlite3`
-- The Vite dev server proxies `/api`, `/auth`, and `/ws` to `http://127.0.0.1:8000`.
-- `npm run build` writes `web-ui/dist/`, and `start.sh` copies it to the repository root `dist/`.
-- FastAPI serves `dist/index.html` and `dist/assets/` from the repository root.
-- `./start.sh` prints the default app URL `http://localhost:8000` and API docs URL `http://localhost:8000/docs`.
-
-### Validation
-
-```bash
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
-cd web-ui && npm run build
-```
-
-### Task Creation API
-
 <details>
-<summary>Click to expand API behavior</summary>
+<summary>Task Management</summary>
 
-- `POST /api/tasks/generate`
-  - `decision_mode=ai`: returns `202` with a `job`; the client should poll for progress.
-  - `decision_mode=keyword`: returns the created task directly.
-- `GET /api/tasks/generate-jobs/{job_id}`: fetch AI task-generation progress.
-- `POST /auth/status`: validate Web UI credentials.
+- AI / keyword decision modes, optional account binding per task.
+- Keyword rules support one-per-line and `re:`-prefixed regex (e.g. `re:\b(pm|pro[\s-]?max)\b`).
+- Price range, new-listing window, province / city / district filter (region data is bundled from a Goofish page snapshot — no external calls).
+- Cron scheduling with presets (every 5 min, every 15 min, daily 08:00, weekday 09:00, etc.) and a free-form 5-segment / 6-segment Cron input.
+- AI Title Pre-Screening: enabled by default. Before fetching the detail page the crawler asks the AI whether the title fundamentally meets the criteria; non-matching items are skipped to save detail fetching, image downloads, and full AI analysis.
 
 </details>
 
-## Configuration
-
 <details>
-<summary>Click to expand common configuration items</summary>
+<summary>Account Management</summary>
 
-### AI and Runtime
-
-- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`: required AI model settings (sufficient for the single-model case).
-- `AI_MODELS`: for the multi-model case. A JSON array where each element is a model config `{"api_key": "...", "base_url": "...", "model_name": "...", "enable_response_format": true, "enable_thinking": false, "proxy_url": ""}`. **The first array element is the primary model and the rest are fallbacks**; on API/network errors the primary automatically fails over to the next model. If `AI_MODELS` is set it overrides the traditional `OPENAI_*` single-model variables (the primary is also synced back to `OPENAI_*` on save for compatibility with older scripts). Manage and test models directly in the Web UI under "System Settings → AI Model Settings".
-- `AI_TITLE_SCREENING_ENABLED`: opt-out switch for "AI title pre-screening". The feature is **ON by default for every task** (no configuration needed); set this env var to `false` to disable it globally. When on, before fetching the detail page the crawler uses AI to judge whether the title fundamentally meets the requirements; non-matching items are skipped to save detail fetching, image download, and full AI analysis.
-- `PROXY_URL`: dedicated HTTP/SOCKS5 proxy for AI requests.
-- `RUN_HEADLESS`: whether the scraper runs headless; keep it `true` in Docker.
-- `SERVER_PORT`: backend port, default `8000`.
-- `SCHEDULER_PAUSED`: whether all scheduled triggers are paused (`true`/`false`). Toggling it in the Web UI under "System Settings → Scheduler" writes this variable and takes effect immediately; manually queued tasks are unaffected while paused.
-- `LOGIN_IS_EDGE`: use Edge instead of Chrome locally; Docker images do not bundle Edge and always run with Chromium.
-- `PCURL_TO_MOBILE`: convert desktop item URLs to mobile URLs.
-
-### Notifications
-
-- Each channel has its own `*_ENABLED` flag (e.g. `NTFY_ENABLED`, `BARK_ENABLED`, `EMAIL_ENABLED`), defaulting to `true`; toggle it via these env vars or directly in the Web UI's Settings → Notifications panel.
-- `NTFY_TOPIC_URL`
-- `GOTIFY_URL` / `GOTIFY_TOKEN`
-- `BARK_URL`
-- `WX_BOT_URL`
-- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `TELEGRAM_API_BASE_URL`
-- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM_ADDRESS` / `SMTP_TO_ADDRESS` / `SMTP_USE_SSL`: email notifications; `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_TO_ADDRESS` must all be set to enable this channel
-- `WEBHOOK_*`
-
-### Account and Proxy Rotation
-
-- `ACCOUNT_ROTATION_ENABLED`: master switch for account rotation (global; applies to all tasks once enabled).
-- `ACCOUNT_ROTATION_MODE`: `per_task` (one fixed account per task) or `on_failure` (switch only when an account triggers anti-bot control).
-- `ACCOUNT_STATE_DIR`: directory holding account login-state files; default `state`. Rotation only happens when the directory actually contains `*.json` account files.
-- `ACCOUNT_ROTATION_RETRY_LIMIT` / `ACCOUNT_BLACKLIST_TTL`: retry count and cooldown (seconds) for blacklisted accounts.
-- `PROXY_ROTATION_ENABLED` / `PROXY_ROTATION_MODE` / `PROXY_POOL` / `PROXY_ROTATION_RETRY_LIMIT` / `PROXY_BLACKLIST_TTL`: proxy rotation switch, mode, pool (comma-separated), and retry/cooldown settings.
-
-#### How to enable rotation
-
-1. In the Web UI, open "System Settings → Account and Proxy Rotation" and toggle the relevant switch, then save.
-   - Account rotation requires multiple login-state files: export each account's state JSON via the browser extension and place it in `ACCOUNT_STATE_DIR` (`state/`). If the directory has no `*.json` files, the switch is ignored and the system falls back to a single login state (a console warning is printed).
-   - Proxy rotation requires at least one address in `PROXY_POOL` (e.g. `http://127.0.0.1:7890,socks5://127.0.0.1:1080`); an empty pool means no proxy is used.
-2. After saving, settings are written to `.env` and take effect immediately; the next task run rotates accordingly.
-
-> Note: Earlier versions only enabled account rotation when no root login state existed; once logged in (a `xianyu_state.json` present) the switch was ignored. This is now fixed — with `ACCOUNT_ROTATION_ENABLED` on and account files present in `ACCOUNT_STATE_DIR`, the account pool is used regardless of the root login state.
-
-### Failure Guard
-
-- `TASK_FAILURE_THRESHOLD`
-- `TASK_FAILURE_PAUSE_SECONDS`
-- `TASK_FAILURE_GUARD_PATH`
-
-See `.env.example` for the full list.
+- Import / view / update / delete Goofish login-state files.
+- Each task can pin one account or let the system auto-select; enabling **Account Rotation** automatically switches between `*.json` files under `state/`.
 
 </details>
 
-## Web Authentication
-
 <details>
-<summary>Click to expand authentication notes</summary>
+<summary>Results</summary>
 
-- The Web UI uses a login page and validates credentials through `POST /auth/status`.
-- After login, the frontend stores local auth state for route guards and WebSocket startup.
-- The default credentials are `admin/admin123`; change them in production.
+- Backed by SQLite (no more `jsonl` scanning).
+- Sort by crawl time / publish time / price (asc/desc) / keyword-hit count / **Smart** (AI-picks-first, then price ascending).
+- Date-range quick filter: All / 1 day / 3 days / 7 days.
+- Filters: AI-only / keyword-only / include hidden.
+- Export CSV, delete single items or the entire result file.
+- Top **Price Trend Insight** panel shows current sample average, historical average, min / max / median, and a price curve.
 
 </details>
 
-## 🚀 Workflow
+<details>
+<summary>Logs</summary>
 
-The diagram below shows the core processing flow of a monitoring task. The main service runs in `src.app` and launches one or more task processes based on user actions or schedule triggers.
+- Per-task log view with WebSocket push (no manual refresh).
+- Level filter: DEBUG / INFO / WARNING / ERROR / CRITICAL.
+- Auto-scroll and one-click clear.
+
+</details>
+
+<details>
+<summary>System Settings</summary>
+
+- **AI Model**: multi-model configuration, per-model test connection, drag-reorder primary/fallback.
+- **Rotation**: account rotation + proxy pool rotation switches, modes, retry / cooldown parameters.
+- **Browser**: toggle Edge vs. Chromium locally. Docker images always use Chromium.
+- **Scheduler**: master switch `SCHEDULER_PAUSED`; pause everything during maintenance.
+- **Global Blacklist**: cross-task crawl-time blacklist (regex supported).
+- **Notifications**: per-channel toggle + per-channel test send for ntfy / WeCom / Bark / Telegram / Email (SMTP) / Webhook.
+- **System Status**: runtime status, `.env` key sanity, loaded notification channels summary.
+- **Prompt Management**: edit any file under `prompts/` and save.
+
+</details>
+
+## Configuration Cheat Sheet
+
+Full list lives in `.env.example`. The most important keys:
+
+| Variable | Description | Required |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | AI model API key | ✅ |
+| `OPENAI_BASE_URL` | OpenAI-compatible API base URL | ✅ |
+| `OPENAI_MODEL_NAME` | Model name (must accept images) | ✅ |
+| `AI_MODELS` | JSON array of models; overrides single-model vars. First element is primary, rest are fallbacks. | ❌ |
+| `AI_TITLE_SCREENING_ENABLED` | Globally disable AI title pre-screening (on by default) | ❌ |
+| `PROXY_URL` | Dedicated proxy for AI requests | ❌ |
+| `RUN_HEADLESS` | Headless mode for the crawler — keep `true` in Docker | ❌ |
+| `SERVER_PORT` | Backend port, default `8000` | ❌ |
+| `SCHEDULER_PAUSED` | Pause every scheduled trigger (`true` / `false`) | ❌ |
+| `WEB_USERNAME` / `WEB_PASSWORD` | Web UI credentials, default `admin/admin123` | ❌ |
+| `*_ENABLED` | Per-channel notification switch (`NTFY_ENABLED`, `BARK_ENABLED`, ...) | ❌ |
+
+## Architecture
 
 ```mermaid
 graph TD
-    A[Start Monitoring Task] --> B[Select Account/Proxy Configuration];
-    B --> C[Task: Search Products];
-    C --> D{Found New Products?};
-    D -- Yes --> E[Scrape Product Details & Seller Info];
-    E --> F[Download Product Images];
-    F --> G[Call AI for Analysis];
-    G --> H{AI Recommended?};
-    H -- Yes --> I[Send Notification];
-    H -- No --> J[Save Record to SQLite];
-    I --> J;
-    D -- No --> K[Next Page/Wait];
-    K --> C;
-    J --> C;
-    C --> L{Risk Control/Exception?};
-    L -- Yes --> M[Account/Proxy Rotation and Retry];
-    M --> C;
+    A[Start Monitoring Task] --> B[Select Account/Proxy]
+    B --> C[Task: Search Products]
+    C --> D{Found New Products?}
+    D -- Yes --> E[Crawl-Time Filter: Global/Task Blacklist]
+    E -- Match --> X[Skip]
+    E -- Pass --> F[AI Title Pre-Screening]
+    F -- Reject --> X
+    F -- Accept --> G[Fetch Detail & Seller & Images]
+    G --> H[Call AI - Multi-Model Pipeline]
+    H --> H1{Primary 429 / Parse Failure?}
+    H1 -- Yes --> H2[Fail over to Next Model]
+    H2 --> H
+    H1 -- No --> I{AI Recommended?}
+    I -- Yes --> J[Send Notification]
+    I -- No --> K[Persist to SQLite]
+    J --> K
+    D -- No --> L[Next Page / Wait]
+    K --> L
+    C --> M{Risk Control / Error?}
+    M -- Yes --> N[Rotate Account/Proxy and Retry]
+    N --> C
 ```
 
-## FAQ
+## Development
 
-<details>
-<summary>Click to expand FAQ</summary>
+```bash
+# Backend (any one)
+python -m src.app
+uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
 
-### Why does AI task creation take time?
+# Frontend
+cd web-ui && npm install && npm run dev
+cd web-ui && npm run build   # artifacts written to repo-root dist/
+```
 
-In AI mode, the system generates analysis criteria before the task itself is created. This now runs as a background job with a separate progress dialog instead of blocking the task form.
+- FastAPI auto-initializes SQLite on startup; first boot also performs a one-time legacy import from `config.json / jsonl / price_history`.
+- The Vite dev server proxies `/api`, `/auth`, and `/ws` to `http://127.0.0.1:8000`.
+- Validation:
 
-### Why is the region filter optional by default?
-
-Region filtering can sharply reduce result volume. Leave it empty if you want a broader market scan first.
-
-### Why does the app say the frontend build artifacts are missing?
-
-It means the repository root `dist/` directory is missing. Run `./start.sh`, or build the frontend in `web-ui/` and make sure the artifacts are copied to the root `dist/`.
-
-### Why does `./start.sh` complain about missing Playwright or a browser?
-
-The script performs a prerequisite check before installing project dependencies. Install the Playwright CLI and Chromium first, then make sure Chrome, Edge, or Chromium is available on the system and rerun `./start.sh`.
-
-### AI analysis fails with `Error code: 429 - rate_limit_error`, what should I do?
-
-This means your AI provider's rate limit was hit. The app automatically backs off with jittered exponential delay (5s/10s/20s, capped at 60s) and retries, so brief bursts usually resolve on their own. If it happens constantly:
-
-- Lower `ai_analysis_concurrency` for the task (or the `AI_ANALYSIS_CONCURRENCY` env var, default `2`) to reduce concurrent requests.
-- Upgrade your Token Plan or switch to pay-as-you-go billing, as suggested by the provider's error message.
-
-</details>
+  ```bash
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
+  cd web-ui && npm run build
+  ```
 
 ## Acknowledgments
 
-<details>
-<summary>Click to expand acknowledgments</summary>
-
-This project is forked from [Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor) — thanks to that project and its contributors for the foundation this fork builds on.
-
-The upstream project also referenced the following excellent projects during development. Special thanks to:
-
-- [superboyyy/xianyu_spider](https://github.com/superboyyy/xianyu_spider)
-
-Also thanks to LinuxDo contributors for script contributions:
-
-- [@jooooody](https://linux.do/u/jooooody/summary)
-
-And thanks to the [LinuxDo](https://linux.do/) community.
-
-Also thanks to ClaudeCode/Gemini/Codex and other model tools for freeing our hands and experiencing the joy of Vibe Coding.
-
-</details>
-
+- Inspiration: [Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor)
+- Upstream also referenced: [superboyyy/xianyu_spider](https://github.com/superboyyy/xianyu_spider)
+- Community contributions: [@jooooody](https://linux.do/u/jooooody/summary) and the [LinuxDo](https://linux.do/) community
+- Tools: ClaudeCode / Gemini / Codex — for the joy of Vibe Coding
 
 ## Notices
 
-<details>
-<summary>Click to expand notice details</summary>
-
-- Please comply with Xianyu's user agreement and robots.txt rules. Do not make frequent requests to avoid burdening the server or having your account restricted.
-- This project is for learning and technical research purposes only. Do not use it for illegal purposes.
-- This project is released under the [MIT License](LICENSE), provided "as is", without any form of warranty.
-- The project authors and contributors are not responsible for any direct, indirect, incidental, or special damages or losses caused by the use of this software.
-- For more details, please refer to the [Disclaimer](DISCLAIMER.md) file.
-
-</details>
+- Please comply with Goofish's user agreement and `robots.txt`. Avoid aggressive request rates that could trigger account throttling.
+- This project is for learning and personal use only. Do not use it for commercial or illegal purposes.
+- Released under the [MIT License](LICENSE), provided "as is", without warranty of any kind.
+- See [DISCLAIMER.md](DISCLAIMER.md) for the full disclaimer.

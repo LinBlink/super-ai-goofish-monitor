@@ -12,7 +12,6 @@ import {
   HelpCircle,
   Menu
 } from 'lucide-vue-next'
-import Badge from '@/components/ui/badge/Badge.vue'
 import { useMobileNav } from '@/composables/useMobileNav'
 import { useI18n } from 'vue-i18n'
 
@@ -49,13 +48,9 @@ function goPrompts() {
       <div class="brand-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-lg shadow-primary/30 transition-transform group-hover:rotate-12">
         <LightningFishIcon :size="28" className="drop-shadow-sm" />
       </div>
-      <h1 class="text-base sm:text-lg font-black tracking-tighter text-slate-800 whitespace-nowrap leading-tight">
-        <span class="bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 bg-clip-text text-transparent">{{ t('header.brandName') }}</span>
-        <span class="hidden sm:inline text-slate-400 mx-1 font-medium">（</span><span class="hidden sm:inline text-slate-500 font-bold tracking-tight">{{ t('header.brandNameEn') }}</span><span class="hidden sm:inline text-slate-400 mx-1 font-medium">）</span>
+      <h1 class="text-base sm:text-lg font-black tracking-tighter text-slate-800 whitespace-nowrap leading-tight bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 bg-clip-text text-transparent">
+        {{ t('header.brandName') }}
       </h1>
-      <Badge class="ml-2 hidden bg-gradient-to-r from-primary to-violet-500 text-[10px] font-bold uppercase tracking-widest text-white sm:flex">
-        PRO
-      </Badge>
     </RouterLink>
 
     <!-- Search & Navigation -->
