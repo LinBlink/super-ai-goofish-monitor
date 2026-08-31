@@ -6,13 +6,13 @@ import { useDashboard } from '@/composables/useDashboard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PriceTrendChart from '@/components/results/PriceTrendChart.vue'
-import { LayoutDashboard, Wallet, ListTodo, TrendingUp, Database, TrendingDown, ExternalLink } from 'lucide-vue-next'
+import { LayoutDashboard, Wallet, ListTodo, TrendingUp, Database, TrendingDown, ExternalLink, Tag } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { StatCard } from '@/components/ui/stat-card'
 
 const router = useRouter()
 const { t } = useI18n()
-const { taskSummaries, decliningDeals, error } = useDashboard()
+const { taskSummaries, decliningDipTasks, error } = useDashboard()
 
 const stats = computed(() => {
   const list = taskSummaries.value
@@ -38,7 +38,7 @@ function openTaskPrice(item: { filename: string | null }) {
   }
 }
 
-function openDealLink(link: string) {
+function openLowestItem(link: string) {
   if (link) {
     window.open(link, '_blank', 'noopener,noreferrer')
   }
@@ -49,6 +49,15 @@ function goCreateTask() {
     name: 'Tasks',
     query: { create: '1' },
   })
+}
+
+function dipChartPoints(task: { trend: Array<{ day: string; min_price: number; avg_price: number | null; sample_count: number }> }) {
+  return task.trend.map((point) => ({
+    day: point.day.slice(5),
+    avg_price: point.avg_price ?? point.min_price,
+    median_price: point.min_price,
+    min_price: point.min_price,
+  }))
 }
 </script>
 
@@ -103,42 +112,66 @@ function goCreateTask() {
         <p class="mt-1 text-sm text-slate-500">{{ t('dashboard.deals.description') }}</p>
       </CardHeader>
       <CardContent class="p-6">
-        <div v-if="decliningDeals.length === 0" class="px-6 py-10 text-center text-sm text-slate-500">
+        <div v-if="decliningDipTasks.length === 0" class="px-6 py-10 text-center text-sm text-slate-500">
           {{ t('dashboard.deals.empty') }}
         </div>
-        <div v-else class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div v-else class="grid gap-4 lg:grid-cols-2">
           <div
-            v-for="deal in decliningDeals"
-            :key="deal.item_id"
+            v-for="task in decliningDipTasks"
+            :key="task.keyword + (task.task_id ?? '')"
             class="app-card border-none p-4 hover:border-rose-200 transition-colors"
-            :class="deal.link ? 'cursor-pointer' : 'cursor-default'"
-            @click="openDealLink(deal.link)"
           >
+            <!-- Task header -->
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-500/80">{{ deal.task_name }}</p>
-                <p class="mt-0.5 text-sm font-bold text-slate-800 line-clamp-2" :title="deal.title">{{ deal.title || deal.item_id }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ t('dashboard.deals.priceLabel') }}</p>
-                <p class="text-xl font-black text-rose-500 leading-tight">¥{{ deal.latest_price_display || deal.latest_price }}</p>
-              </div>
-            </div>
-            <div class="mt-3 flex items-end justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-1.5 text-rose-500">
-                  <TrendingDown class="w-4 h-4" />
-                  <span class="text-sm font-black">{{ t('dashboard.deals.declinePercent', { percent: Math.abs(deal.decline_percent).toFixed(1) }) }}</span>
-                </div>
-                <p class="mt-1 text-[11px] text-slate-500">
-                  {{ t('dashboard.deals.highestLabel') }} ¥{{ deal.highest_price }}
+                <p class="text-base font-black text-slate-800 truncate" :title="task.task_name">{{ task.task_name }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1">
+                  <Tag class="w-3 h-3" />
+                  {{ task.keyword }}
                   <span class="mx-1 text-slate-300">·</span>
-                  {{ t('dashboard.deals.samplesShort', { count: deal.snapshots_count }) }}
+                  {{ t('dashboard.deals.samplesShort', { count: task.trend_points }) }}
                 </p>
               </div>
-              <ExternalLink v-if="deal.link" class="w-4 h-4 text-slate-400 shrink-0" />
+              <div class="text-right shrink-0">
+                <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ t('dashboard.deals.latestMinPrice') }}</p>
+                <p class="text-2xl font-black text-rose-500 leading-tight">¥{{ task.latest_min_price }}</p>
+                <div class="mt-1 flex items-center justify-end gap-1 text-rose-500">
+                  <TrendingDown class="w-3.5 h-3.5" />
+                  <span class="text-xs font-bold">{{ t('dashboard.deals.declinePercent', { percent: Math.abs(task.decline_percent).toFixed(1) }) }}</span>
+                </div>
+              </div>
             </div>
-            <PriceTrendChart class="mt-3" :points="deal.trend.map((price, index, arr) => ({ day: String(index + 1), avg_price: price, median_price: price, min_price: price }))" />
+
+            <!-- Trend chart (daily min price curve) -->
+            <PriceTrendChart class="mt-3" :points="dipChartPoints(task)" />
+
+            <!-- Lowest-priced AI-recommended item in this task -->
+            <div class="mt-3 rounded-xl border border-dashed border-rose-200 bg-rose-50/40 p-3">
+              <p class="text-[10px] font-semibold uppercase tracking-wider text-rose-500/80">{{ t('dashboard.deals.lowestItemTitle') }}</p>
+              <div
+                v-if="task.lowest_item"
+                class="mt-1.5 flex items-start justify-between gap-2 cursor-pointer"
+                @click="openLowestItem(task.lowest_item.link)"
+              >
+                <p class="min-w-0 flex-1 text-sm font-medium text-slate-700 line-clamp-2" :title="task.lowest_item.title">
+                  {{ task.lowest_item.title || task.lowest_item.item_id }}
+                </p>
+                <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
+                  <p class="text-base font-black text-rose-500 leading-none">¥{{ task.lowest_item.price_display || task.lowest_item.price }}</p>
+                  <span v-if="task.lowest_item.link" class="inline-flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-rose-500">
+                    {{ t('dashboard.deals.openItem') }}
+                    <ExternalLink class="w-3 h-3" />
+                  </span>
+                </div>
+              </div>
+              <p v-else class="mt-1.5 text-xs text-slate-400">{{ t('dashboard.deals.lowestItemEmpty') }}</p>
+            </div>
+
+            <p class="mt-2 text-[10px] text-slate-400">
+              {{ t('dashboard.deals.highestLabel') }} ¥{{ task.highest_min_price }}
+              <span class="mx-1 text-slate-300">·</span>
+              {{ t('dashboard.deals.lastSeen', { time: (task.last_seen_at || '').slice(0, 10) }) }}
+            </p>
           </div>
         </div>
       </CardContent>

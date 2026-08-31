@@ -51,18 +51,35 @@ export interface DashboardActivity {
   timestamp: string | null
 }
 
-export interface DashboardDeal {
-  keyword: string
-  task_name: string
+export interface DashboardDipLowestItem {
   item_id: string
   title: string
+  price: number
+  price_display: string
   link: string
-  latest_price: number
-  latest_price_display: string
-  highest_price: number
+  seller: string
+  region: string
+  snapshot_time: string
+}
+
+export interface DashboardDipTrendPoint {
+  day: string
+  min_price: number
+  avg_price: number | null
+  sample_count: number
+}
+
+export interface DashboardDipTask {
+  task_id: number | null
+  task_name: string
+  keyword: string
+  latest_min_price: number
+  latest_min_price_display: string
+  highest_min_price: number
   decline_percent: number
-  snapshots_count: number
-  trend: number[]
+  trend: DashboardDipTrendPoint[]
+  trend_points: number
+  lowest_item: DashboardDipLowestItem | null
   first_seen_at: string | null
   last_seen_at: string | null
 }
@@ -71,6 +88,6 @@ export interface DashboardSnapshot {
   summary: DashboardSummary
   task_summaries: DashboardTaskSummary[]
   recent_activities: DashboardActivity[]
-  declining_deals: DashboardDeal[]
+  declining_dip_tasks: DashboardDipTask[]
   focus_file: string | null
 }

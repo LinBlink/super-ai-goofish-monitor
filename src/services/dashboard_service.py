@@ -17,7 +17,10 @@ from src.services.dashboard_payloads import (
     sort_key_by_latest_time,
     summarize_result_file,
 )
-from src.services.price_history_service import find_declining_deals
+from src.services.price_history_service import (
+    collect_keyword_to_ai_ids,
+    find_declining_dip_tasks,
+)
 from src.services.result_storage_service import list_result_filenames
 
 MAX_RECENT_ACTIVITIES = 8
@@ -59,7 +62,7 @@ async def build_dashboard_snapshot(tasks: list[Task]) -> dict[str, Any]:
 
     summary_list = sorted(task_summaries.values(), key=sort_key_by_latest_time, reverse=True)
     focus_file = next((item["filename"] for item in summary_list if item.get("filename")), None)
-    declining_deals = await asyncio.to_thread(find_declining_deals)
+    declining_dip_tasks = await _collect_declining_dip_tasks(task_lookup)
     return {
         "summary": _build_summary_metrics(tasks, summary_list, latest_updated_at),
         "task_summaries": summary_list,
@@ -68,6 +71,23 @@ async def build_dashboard_snapshot(tasks: list[Task]) -> dict[str, Any]:
             key=sort_key_by_activity_time,
             reverse=True,
         )[:MAX_RECENT_ACTIVITIES],
-        "declining_deals": declining_deals,
+        "declining_dip_tasks": declining_dip_tasks,
         "focus_file": focus_file,
     }
+
+
+async def _collect_declining_dip_tasks(task_lookup: dict[str, "Task"]) -> list[dict]:
+    """收集按任务聚合的「持续下跌可抄底」数据，并补充 task_id / task_name。"""
+    keyword_to_ai_ids = await collect_keyword_to_ai_ids()
+    if not keyword_to_ai_ids:
+        return []
+    entries = await asyncio.to_thread(find_declining_dip_tasks, keyword_to_ai_ids)
+    enriched: list[dict] = []
+    for entry in entries:
+        keyword = entry.get("keyword") or ""
+        task = task_lookup.get(normalize_text(keyword)) if keyword else None
+        if task is not None:
+            entry["task_id"] = task.id
+            entry["task_name"] = task.task_name
+        enriched.append(entry)
+    return enriched

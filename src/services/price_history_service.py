@@ -447,98 +447,172 @@ def _is_strictly_decreasing(prices: list[float]) -> bool:
     return all(prices[index] > prices[index + 1] for index in range(len(prices) - 1))
 
 
-def find_declining_deals(
+def find_declining_dip_tasks(
+    keyword_to_ai_ids: dict[str, set[str]],
     *,
-    min_snapshots: int = 3,
-    min_decline_percent: float = 10.0,
-    max_results: int = 8,
+    min_tail_points: int = 3,
+    min_decline_percent: float = 8.0,
     window_days: int = DEFAULT_HISTORY_WINDOW_DAYS,
+    max_results: int = 12,
 ) -> list[dict]:
-    """找出价格走势「持续下跌可抄底」的商品。
+    """按任务聚合的「持续下跌可抄底」榜单。
 
-    入选条件：
-    - 至少有 min_snapshots 条价格快照（在 window_days 窗口内）。
-    - 最近 3 次价格呈严格单调递减（每次都比上一次更低）。
-    - 较窗口内的最高价累计下跌 >= min_decline_percent。
+    入选条件（针对单个任务/关键词）：
+    - keyword_to_ai_ids 提供每个关键词下 AI 推荐商品的 item_id 集合。
+    - 在 window_days 窗口内的「每日最低价（仅统计 AI 推荐商品）」序列：
+      * 至少 min_tail_points 个有效数据点；
+      * 末尾 min_tail_points 个点呈严格单调递减；
+      * 较窗口内的「每日最低价」最大值累计下跌 ≥ min_decline_percent。
 
-    返回按累计跌幅降序排列，最多 max_results 条。每条包含：
-    keyword / task_name / item_id / title / link / latest_price /
-    highest_price / decline_percent / snapshots_count / trend / first_seen_at /
-    last_seen_at / price_display。
+    返回按累计跌幅降序排列的最多 max_results 个任务，每个任务包含：
+    task_id / task_name / keyword / latest_min_price / highest_min_price /
+    decline_percent / trend（每日 min/avg 序列）/ lowest_item（当前 AI 推荐
+    商品里最低价的那一条）/ first_seen_at / last_seen_at。
     """
-    bootstrap_sqlite_storage()
-    with sqlite_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT keyword_slug, keyword, task_name, item_id, title, link,
-                   price, snapshot_time, price_display
-            FROM price_snapshots
-            ORDER BY keyword_slug ASC, item_id ASC, snapshot_time ASC, id ASC
-            """
-        ).fetchall()
-
-    grouped: dict[tuple[str, str], list[dict]] = {}
-    for row in rows:
-        price_value = parse_price_value(row["price"])
-        if price_value is None or price_value <= 0:
+    candidates: list[dict] = []
+    for keyword, ai_ids in keyword_to_ai_ids.items():
+        if not ai_ids:
             continue
-        key = (str(row["keyword_slug"] or ""), str(row["item_id"] or ""))
-        grouped.setdefault(key, []).append(
-            {
-                "keyword_slug": str(row["keyword_slug"] or ""),
-                "keyword": str(row["keyword"] or ""),
-                "task_name": str(row["task_name"] or ""),
-                "item_id": str(row["item_id"] or ""),
-                "title": str(row["title"] or ""),
-                "link": str(row["link"] or ""),
-                "price": float(price_value),
-                "snapshot_time": str(row["snapshot_time"] or ""),
-                "price_display": str(row["price_display"] or ""),
-            }
+        insights = build_price_history_insights(
+            keyword, window_days=window_days, visible_item_ids=ai_ids
         )
-
-    deals: list[dict] = []
-    for entries in grouped.values():
-        if not entries:
+        daily = insights.get("daily_trend") or []
+        min_series = [
+            {"day": str(point["day"]), "min_price": float(point["min_price"]),
+             "avg_price": point.get("avg_price"), "sample_count": int(point.get("sample_count") or 0)}
+            for point in daily
+            if isinstance(point.get("min_price"), (int, float))
+        ]
+        if len(min_series) < min_tail_points:
             continue
-        entries.sort(key=lambda record: record["snapshot_time"])
-        # 仅保留最近窗口内的快照。
-        windowed = _recent_window_snapshots(entries, window_days)
-        if len(windowed) < min_snapshots:
+        tail = [point["min_price"] for point in min_series[-min_tail_points:]]
+        if not _is_strictly_decreasing(tail):
             continue
-
-        prices = [record["price"] for record in windowed]
-        # 末段 3 次价格必须严格递减（覆盖绝大多数正常监控节奏）。
-        tail_window = prices[-3:] if len(prices) >= 3 else prices
-        if not _is_strictly_decreasing(tail_window):
+        highest_min = max(point["min_price"] for point in min_series)
+        latest_min = min_series[-1]["min_price"]
+        if highest_min <= 0:
             continue
-
-        latest_price = prices[-1]
-        highest_price = max(prices)
-        if highest_price <= 0:
-            continue
-        decline_percent = round((latest_price - highest_price) / highest_price * 100, 2)
+        decline_percent = round((latest_min - highest_min) / highest_min * 100, 2)
         if decline_percent >= 0 or abs(decline_percent) < min_decline_percent:
             continue
 
-        latest = windowed[-1]
-        deals.append(
+        lowest_item = _find_lowest_ai_recommended_item(
+            keyword=keyword, ai_ids=ai_ids, window_days=window_days
+        )
+        if not lowest_item:
+            continue
+        candidates.append(
             {
-                "keyword": latest["keyword"],
-                "task_name": latest["task_name"],
-                "item_id": latest["item_id"],
-                "title": latest["title"],
-                "link": latest["link"],
-                "latest_price": round(latest_price, 2),
-                "latest_price_display": latest["price_display"],
-                "highest_price": round(highest_price, 2),
+                "task_id": None,
+                "task_name": keyword,
+                "keyword": keyword,
+                "latest_min_price": round(latest_min, 2),
+                "latest_min_price_display": "",
+                "highest_min_price": round(highest_min, 2),
                 "decline_percent": decline_percent,
-                "snapshots_count": len(windowed),
-                "trend": [round(value, 2) for value in prices],
-                "first_seen_at": windowed[0]["snapshot_time"],
-                "last_seen_at": windowed[-1]["snapshot_time"],
+                "trend": [
+                    {
+                        "day": point["day"],
+                        "min_price": round(point["min_price"], 2),
+                        "avg_price": (
+                            round(float(point["avg_price"]), 2)
+                            if isinstance(point.get("avg_price"), (int, float))
+                            else None
+                        ),
+                        "sample_count": point["sample_count"],
+                    }
+                    for point in min_series
+                ],
+                "lowest_item": lowest_item,
+                "trend_points": len(min_series),
+                "first_seen_at": min_series[0]["day"],
+                "last_seen_at": min_series[-1]["day"],
             }
         )
 
-    deals.sort(key=lambda item: item["decline_percent"])
-    return deals[:max_results]
+    candidates.sort(key=lambda item: item["decline_percent"])
+    return candidates[:max_results]
+
+
+async def collect_keyword_to_ai_ids() -> dict[str, set[str]]:
+    """异步收集每个关键词对应的 AI 推荐商品 ID 集合（合并多个结果文件）。"""
+    from src.services.result_storage_service import (
+        load_ai_recommended_item_ids,
+        list_result_filenames,
+        load_result_summary,
+    )
+
+    keyword_to_ai_ids: dict[str, set[str]] = {}
+    try:
+        filenames = await list_result_filenames()
+    except Exception:
+        filenames = []
+    for filename in filenames:
+        try:
+            summary = await load_result_summary(filename)
+        except Exception:
+            continue
+        if not summary:
+            continue
+        latest = summary.get("latest_record") or {}
+        file_keyword = str(latest.get("搜索关键字") or "").strip()
+        if not file_keyword:
+            continue
+        try:
+            ai_ids = load_ai_recommended_item_ids(filename)
+        except Exception:
+            ai_ids = set()
+        if ai_ids:
+            keyword_to_ai_ids.setdefault(file_keyword, set()).update(ai_ids)
+    return keyword_to_ai_ids
+
+
+def _find_lowest_ai_recommended_item(
+    *,
+    keyword: str,
+    ai_ids: set[str],
+    window_days: int,
+) -> dict | None:
+    """在关键词对应的快照里，找出 AI 推荐商品中当前最低价的那一件。
+
+    取窗口内最近一次爬取批次（latest run_id）里 AI 推荐商品的最低价；
+    若 AI 推荐数量太少，回退到窗口内 AI 推荐的全局最低价。
+    """
+    if not ai_ids:
+        return None
+    snapshots = load_price_snapshots(keyword)
+    if not snapshots:
+        return None
+    windowed = _recent_window_snapshots(snapshots, window_days)
+    if not windowed:
+        return None
+    ai_filtered = [
+        record for record in windowed if str(record.get("item_id") or "") in ai_ids
+    ]
+    if not ai_filtered:
+        return None
+    # 优先取最近一次 run_id（最贴近当前市场）的快照
+    latest_run_id = str(windowed[-1].get("run_id") or "")
+    latest_run_records = [
+        record for record in ai_filtered if str(record.get("run_id") or "") == latest_run_id
+    ]
+    pool = latest_run_records or ai_filtered
+    # 同 item_id 只保留最新一条
+    deduped = _dedupe_latest(pool, "item_id")
+    if not deduped:
+        return None
+    priced = [record for record in deduped if parse_price_value(record.get("price")) is not None]
+    if not priced:
+        return None
+    priced.sort(key=lambda record: float(record["price"]))
+    pick = priced[0]
+    return {
+        "item_id": str(pick.get("item_id") or ""),
+        "title": str(pick.get("title") or ""),
+        "price": round(float(pick["price"]), 2),
+        "price_display": str(pick.get("price_display") or ""),
+        "link": str(pick.get("link") or ""),
+        "seller": str(pick.get("seller") or ""),
+        "region": str(pick.get("region") or ""),
+        "snapshot_time": str(pick.get("snapshot_time") or ""),
+    }
