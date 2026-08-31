@@ -447,6 +447,20 @@ def _is_strictly_decreasing(prices: list[float]) -> bool:
     return all(prices[index] > prices[index + 1] for index in range(len(prices) - 1))
 
 
+def _is_non_increasing(prices: list[float]) -> bool:
+    """价格序列不递增（允许持平，但不允许上涨）。"""
+    if len(prices) < 2:
+        return False
+    return all(prices[index] >= prices[index + 1] for index in range(len(prices) - 1))
+
+
+def _has_any_drop(prices: list[float]) -> bool:
+    """序列里是否至少有一次严格下跌（防止「跌完又横盘」伪入选）。"""
+    if len(prices) < 2:
+        return False
+    return any(prices[index] > prices[index + 1] for index in range(len(prices) - 1))
+
+
 def find_declining_dip_tasks(
     keyword_to_ai_ids: dict[str, set[str]],
     *,
@@ -486,7 +500,11 @@ def find_declining_dip_tasks(
         if len(min_series) < min_tail_points:
             continue
         tail = [point["min_price"] for point in min_series[-min_tail_points:]]
-        if not _is_strictly_decreasing(tail):
+        # 用「不递增」判定：允许持平（视为持续下跌的一部分），但不允许上涨。
+        if not _is_non_increasing(tail):
+            continue
+        # 同时要求尾部里至少出现一次严格下跌，避免「跌完横盘」被误判为持续下跌。
+        if not _has_any_drop(tail):
             continue
         highest_min = max(point["min_price"] for point in min_series)
         latest_min = min_series[-1]["min_price"]
