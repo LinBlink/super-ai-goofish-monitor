@@ -54,8 +54,8 @@ function goCreateTask() {
 function dipChartPoints(task: { trend: Array<{ day: string; min_price: number; avg_price: number | null; sample_count: number }> }) {
   return task.trend.map((point) => ({
     day: point.day.slice(5),
-    avg_price: point.avg_price ?? point.min_price,
-    median_price: point.min_price,
+    avg_price: null,
+    median_price: null,
     min_price: point.min_price,
   }))
 }
@@ -143,7 +143,7 @@ function dipChartPoints(task: { trend: Array<{ day: string; min_price: number; a
             </div>
 
             <!-- Trend chart (daily min price curve) -->
-            <PriceTrendChart class="mt-3" :points="dipChartPoints(task)" />
+            <PriceTrendChart class="mt-3" :points="dipChartPoints(task)" mode="min-only" />
 
             <!-- Lowest-priced AI-recommended item in this task -->
             <div class="mt-3 rounded-xl border border-dashed border-rose-200 bg-rose-50/40 p-3">

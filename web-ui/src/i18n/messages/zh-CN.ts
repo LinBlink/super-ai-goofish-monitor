@@ -188,6 +188,7 @@ const zhCN = {
       avgPrice: '均价',
       medianPrice: '中位数',
       minPrice: '每日最低价',
+      dipHeader: '每日最低价曲线',
       noTrend: '暂无可绘制的趋势数据',
       aiSourceNote: '数据来源：仅统计 AI 推荐商品的价格，其余商品价格不计入趋势。',
       highMark: '最高 ¥{price}',

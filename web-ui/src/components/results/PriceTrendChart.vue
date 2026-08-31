@@ -9,10 +9,17 @@ interface TrendPoint {
   min_price?: number | null
 }
 
-const props = defineProps<{
-  points: TrendPoint[]
-}>()
+type ChartMode = 'full' | 'min-only'
+
+const props = withDefaults(
+  defineProps<{
+    points: TrendPoint[]
+    mode?: ChartMode
+  }>(),
+  { mode: 'full' },
+)
 const { t } = useI18n()
+const isMinOnly = computed(() => props.mode === 'min-only')
 
 const chartWidth = 720
 const chartHeight = 240
@@ -24,14 +31,25 @@ const axisLabelHeight = 20
 const extremeLabelGap = 30
 const plotBottom = chartHeight - axisLabelHeight - extremeLabelGap
 
-const validPoints = computed(() =>
-  props.points.filter((point) => point.avg_price !== null && point.avg_price !== undefined)
-)
+const validPoints = computed(() => {
+  if (isMinOnly.value) {
+    return props.points.filter(
+      (point) => typeof point.min_price === 'number',
+    )
+  }
+  return props.points.filter(
+    (point) => point.avg_price !== null && point.avg_price !== undefined,
+  )
+})
 
 const valueRange = computed(() => {
-  const values = validPoints.value
-    .flatMap((point) => [point.avg_price, point.median_price, point.min_price])
-    .filter((value): value is number => typeof value === 'number')
+  const values = isMinOnly.value
+    ? validPoints.value
+        .map((point) => point.min_price)
+        .filter((value): value is number => typeof value === 'number')
+    : validPoints.value
+        .flatMap((point) => [point.avg_price, point.median_price, point.min_price])
+        .filter((value): value is number => typeof value === 'number')
   if (values.length === 0) {
     return { min: 0, max: 1 }
   }
@@ -82,11 +100,15 @@ function buildPath(values: Array<number | null>) {
   return commands.join(' ')
 }
 
-const avgPath = computed(() => buildPath(validPoints.value.map((point) => point.avg_price)))
-const medianPath = computed(() => buildPath(validPoints.value.map((point) => point.median_price)))
+const avgPath = computed(() =>
+  isMinOnly.value ? '' : buildPath(validPoints.value.map((point) => point.avg_price)),
+)
+const medianPath = computed(() =>
+  isMinOnly.value ? '' : buildPath(validPoints.value.map((point) => point.median_price)),
+)
 // 每日最低价：当天 AI 推荐商品中价格最低的那一件，用于观察"底价"走势。
 const minPath = computed(() =>
-  buildPath(validPoints.value.map((point) => (typeof point.min_price === 'number' ? point.min_price : null)))
+  buildPath(validPoints.value.map((point) => (typeof point.min_price === 'number' ? point.min_price : null))),
 )
 const areaPath = computed(() => {
   if (!avgPath.value || validPoints.value.length === 0) return ''
@@ -100,14 +122,25 @@ interface ExtremePoint {
   point: TrendPoint
 }
 
-// 最高价/最低价标记：以 AI 推荐商品的均价曲线为准，标出曲线中的极值点。
+// 极值标记基准曲线：min-only 模式下使用 min_price 曲线，否则用 avg_price 曲线。
+function extremeValue(point: TrendPoint): number | null {
+  if (isMinOnly.value) {
+    return typeof point.min_price === 'number' ? point.min_price : null
+  }
+  return typeof point.avg_price === 'number' ? point.avg_price : null
+}
+
+// 最高价/最低价标记：在基准曲线上标出极值点。
 const highPoint = computed<ExtremePoint | null>(() => {
   const points = validPoints.value
   let best: ExtremePoint | null = null
   for (let index = 0; index < points.length; index += 1) {
     const point = points[index]
-    if (!point || typeof point.avg_price !== 'number') continue
-    if (!best || point.avg_price > (best.point.avg_price as number)) {
+    if (!point) continue
+    const value = extremeValue(point)
+    if (value === null) continue
+    const bestValue = best ? extremeValue(best.point) : null
+    if (bestValue === null || value > bestValue) {
       best = { index, point }
     }
   }
@@ -119,32 +152,47 @@ const lowPoint = computed<ExtremePoint | null>(() => {
   let best: ExtremePoint | null = null
   for (let index = 0; index < points.length; index += 1) {
     const point = points[index]
-    if (!point || typeof point.avg_price !== 'number') continue
-    if (!best || point.avg_price < (best.point.avg_price as number)) {
+    if (!point) continue
+    const value = extremeValue(point)
+    if (value === null) continue
+    const bestValue = best ? extremeValue(best.point) : null
+    if (bestValue === null || value < bestValue) {
       best = { index, point }
     }
   }
   return best
 })
+
+function extremePrice(point: TrendPoint): number | null {
+  return extremeValue(point)
+}
 </script>
 
 <template>
   <div class="app-surface-subtle p-4">
     <div class="mb-1 flex flex-col gap-3 text-xs uppercase tracking-[0.22em] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-      <span>Daily Price Curve</span>
+      <span>{{ isMinOnly ? t('results.chart.dipHeader') : 'Daily Price Curve' }}</span>
       <div class="flex items-center gap-3">
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2.5 w-2.5 rounded-full bg-sky-600" />
-          {{ t('results.chart.avgPrice') }}
-        </span>
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2.5 w-2.5 rounded-full bg-amber-500" />
-          {{ t('results.chart.medianPrice') }}
-        </span>
-        <span class="inline-flex items-center gap-1">
-          <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-          {{ t('results.chart.minPrice') }}
-        </span>
+        <template v-if="isMinOnly">
+          <span class="inline-flex items-center gap-1">
+            <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+            {{ t('results.chart.minPrice') }}
+          </span>
+        </template>
+        <template v-else>
+          <span class="inline-flex items-center gap-1">
+            <span class="h-2.5 w-2.5 rounded-full bg-sky-600" />
+            {{ t('results.chart.avgPrice') }}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <span class="h-2.5 w-2.5 rounded-full bg-amber-500" />
+            {{ t('results.chart.medianPrice') }}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+            {{ t('results.chart.minPrice') }}
+          </span>
+        </template>
       </div>
     </div>
     <p class="mb-3 text-[11px] normal-case tracking-normal text-slate-400">
@@ -177,14 +225,16 @@ const lowPoint = computed<ExtremePoint | null>(() => {
           />
         </g>
 
-        <path :d="areaPath" fill="url(#avg-area-fill)" />
-        <path :d="avgPath" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round" />
-        <path :d="medianPath" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round" />
+        <path v-if="!isMinOnly" :d="areaPath" fill="url(#avg-area-fill)" />
+        <path v-if="!isMinOnly" :d="avgPath" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round" />
+        <path v-if="!isMinOnly" :d="medianPath" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round" />
         <path :d="minPath" fill="none" stroke="#059669" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round" />
 
         <g v-for="(point, index) in validPoints" :key="point.day">
-          <circle :cx="resolveX(index)" :cy="resolveY(point.avg_price as number)" r="5" fill="#0284c7" />
-          <circle :cx="resolveX(index)" :cy="resolveY(point.median_price as number)" r="4" fill="#f59e0b" />
+          <template v-if="!isMinOnly">
+            <circle :cx="resolveX(index)" :cy="resolveY(point.avg_price as number)" r="5" fill="#0284c7" />
+            <circle :cx="resolveX(index)" :cy="resolveY(point.median_price as number)" r="4" fill="#f59e0b" />
+          </template>
           <circle
             v-if="typeof point.min_price === 'number'"
             :cx="resolveX(index)"
@@ -207,7 +257,7 @@ const lowPoint = computed<ExtremePoint | null>(() => {
         <g v-if="highPoint">
           <circle
             :cx="resolveX(highPoint.index)"
-            :cy="resolveY(highPoint.point.avg_price as number)"
+            :cy="resolveY(extremePrice(highPoint.point) as number)"
             r="7"
             fill="none"
             stroke="#e11d48"
@@ -215,13 +265,13 @@ const lowPoint = computed<ExtremePoint | null>(() => {
           />
           <text
             :x="labelX(highPoint.index)"
-            :y="resolveY(highPoint.point.avg_price as number) - 14"
+            :y="resolveY(extremePrice(highPoint.point) as number) - 14"
             :text-anchor="labelAnchor(highPoint.index)"
             fill="#e11d48"
             font-size="12"
             font-weight="600"
           >
-            {{ t('results.chart.highMark', { price: highPoint.point.avg_price }) }}
+            {{ t('results.chart.highMark', { price: extremePrice(highPoint.point) }) }}
           </text>
         </g>
 
@@ -229,7 +279,7 @@ const lowPoint = computed<ExtremePoint | null>(() => {
         <g v-if="lowPoint && lowPoint.index !== highPoint?.index">
           <circle
             :cx="resolveX(lowPoint.index)"
-            :cy="resolveY(lowPoint.point.avg_price as number)"
+            :cy="resolveY(extremePrice(lowPoint.point) as number)"
             r="7"
             fill="none"
             stroke="#16a34a"
@@ -237,13 +287,13 @@ const lowPoint = computed<ExtremePoint | null>(() => {
           />
           <text
             :x="labelX(lowPoint.index)"
-            :y="resolveY(lowPoint.point.avg_price as number) + 20"
+            :y="resolveY(extremePrice(lowPoint.point) as number) + 20"
             :text-anchor="labelAnchor(lowPoint.index)"
             fill="#16a34a"
             font-size="12"
             font-weight="600"
           >
-            {{ t('results.chart.lowMark', { price: lowPoint.point.avg_price }) }}
+            {{ t('results.chart.lowMark', { price: extremePrice(lowPoint.point) }) }}
           </text>
         </g>
       </svg>
