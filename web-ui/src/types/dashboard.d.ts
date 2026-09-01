@@ -77,6 +77,8 @@ export interface DashboardDipTask {
   latest_min_price_display: string
   highest_min_price: number
   decline_percent: number
+  avg_daily_decline: number
+  decline_days: number
   trend: DashboardDipTrendPoint[]
   trend_points: number
   lowest_item: DashboardDipLowestItem | null

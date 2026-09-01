@@ -139,6 +139,13 @@ function dipChartPoints(task: { trend: Array<{ day: string; min_price: number; a
                   <TrendingDown class="w-3.5 h-3.5" />
                   <span class="text-xs font-bold">{{ t('dashboard.deals.declinePercent', { percent: Math.abs(task.decline_percent).toFixed(1) }) }}</span>
                 </div>
+                <p
+                  v-if="task.decline_days > 1 && task.avg_daily_decline > 0"
+                  class="mt-0.5 text-[11px] font-medium text-slate-500"
+                  :title="t('dashboard.deals.avgDailyDecline', { amount: task.avg_daily_decline.toFixed(2) })"
+                >
+                  {{ t('dashboard.deals.avgDailyDeclineShort', { amount: task.avg_daily_decline.toFixed(2) }) }}
+                </p>
               </div>
             </div>
 

@@ -117,6 +117,8 @@ const zhCN = {
       empty: '暂无持续下跌的任务，需要更多监控数据才会出现抄底机会。',
       openItem: '打开',
       declinePercent: '累计下跌 {percent}%',
+      avgDailyDecline: '日均下跌 ¥{amount}',
+      avgDailyDeclineShort: '日均 ¥{amount}',
       snapshotLabel: '样本 {count} 次',
       latestMinPrice: '当前最低',
       highestLabel: '周期最高最低价',

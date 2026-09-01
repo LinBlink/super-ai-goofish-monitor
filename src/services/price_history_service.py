@@ -7,7 +7,7 @@ import json
 import math
 import os
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from statistics import median
 from typing import Any, Iterable, Optional
 
@@ -461,6 +461,38 @@ def _has_any_drop(prices: list[float]) -> bool:
     return any(prices[index] > prices[index + 1] for index in range(len(prices) - 1))
 
 
+def _days_between(start_day: str, end_day: str) -> int:
+    """两个 YYYY-MM-DD 日期之间相差的天数（end - start）。"""
+    try:
+        return (date.fromisoformat(end_day) - date.fromisoformat(start_day)).days
+    except ValueError:
+        return 0
+
+
+def _avg_daily_decline(
+    min_series: list[dict],
+    highest_min: float,
+    latest_min: float,
+) -> tuple[float, int]:
+    """根据「最高价日 → 最新日」的天数差，计算平均每日下跌金额（元/天）。
+
+    返回 (avg_daily_decline, decline_days)。
+    decline_days == 0 时退回使用「累计跌幅」本身。
+    """
+    if highest_min <= latest_min:
+        return 0.0, 0
+    first_high_index = next(
+        (i for i, point in enumerate(min_series) if point["min_price"] == highest_min),
+        len(min_series) - 1,
+    )
+    high_day = min_series[first_high_index]["day"]
+    latest_day = min_series[-1]["day"]
+    decline_days = _days_between(high_day, latest_day)
+    if decline_days <= 0:
+        return round(highest_min - latest_min, 2), 0
+    return round((highest_min - latest_min) / decline_days, 2), decline_days
+
+
 def find_declining_dip_tasks(
     keyword_to_ai_ids: dict[str, set[str]],
     *,
@@ -475,13 +507,14 @@ def find_declining_dip_tasks(
     - keyword_to_ai_ids 提供每个关键词下 AI 推荐商品的 item_id 集合。
     - 在 window_days 窗口内的「每日最低价（仅统计 AI 推荐商品）」序列：
       * 至少 min_tail_points 个有效数据点；
-      * 末尾 min_tail_points 个点呈严格单调递减；
+      * 末尾 min_tail_points 个点呈「不递增 + 至少一次严格下跌」；
       * 较窗口内的「每日最低价」最大值累计下跌 ≥ min_decline_percent。
 
     返回按累计跌幅降序排列的最多 max_results 个任务，每个任务包含：
     task_id / task_name / keyword / latest_min_price / highest_min_price /
-    decline_percent / trend（每日 min/avg 序列）/ lowest_item（当前 AI 推荐
-    商品里最低价的那一条）/ first_seen_at / last_seen_at。
+    decline_percent / avg_daily_decline / decline_days / trend（每日 min/avg
+    序列）/ lowest_item（当前 AI 推荐商品里最低价的那一条）/
+    first_seen_at / last_seen_at。
     """
     candidates: list[dict] = []
     for keyword, ai_ids in keyword_to_ai_ids.items():
@@ -514,6 +547,10 @@ def find_declining_dip_tasks(
         if decline_percent >= 0 or abs(decline_percent) < min_decline_percent:
             continue
 
+        avg_daily_decline, decline_days = _avg_daily_decline(
+            min_series, highest_min, latest_min
+        )
+
         lowest_item = _find_lowest_ai_recommended_item(
             keyword=keyword, ai_ids=ai_ids, window_days=window_days
         )
@@ -528,6 +565,8 @@ def find_declining_dip_tasks(
                 "latest_min_price_display": "",
                 "highest_min_price": round(highest_min, 2),
                 "decline_percent": decline_percent,
+                "avg_daily_decline": avg_daily_decline,
+                "decline_days": decline_days,
                 "trend": [
                     {
                         "day": point["day"],
