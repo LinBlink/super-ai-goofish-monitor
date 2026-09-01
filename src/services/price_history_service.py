@@ -498,6 +498,7 @@ def find_declining_dip_tasks(
     *,
     min_tail_points: int = 3,
     min_decline_percent: float = 8.0,
+    min_decline_days: int = 3,
     window_days: int = DEFAULT_HISTORY_WINDOW_DAYS,
     max_results: int = 12,
 ) -> list[dict]:
@@ -508,7 +509,9 @@ def find_declining_dip_tasks(
     - 在 window_days 窗口内的「每日最低价（仅统计 AI 推荐商品）」序列：
       * 至少 min_tail_points 个有效数据点；
       * 末尾 min_tail_points 个点呈「不递增 + 至少一次严格下跌」；
-      * 较窗口内的「每日最低价」最大值累计下跌 ≥ min_decline_percent。
+      * 较窗口内的「每日最低价」最大值累计下跌 ≥ min_decline_percent；
+      * 跌幅期跨度（日历天数：最高价日 → 最新日）≥ min_decline_days，
+        避免「单日峰值后回落」这种伪下跌被误判为持续下跌。
 
     返回按累计跌幅降序排列的最多 max_results 个任务，每个任务包含：
     task_id / task_name / keyword / latest_min_price / highest_min_price /
@@ -550,6 +553,10 @@ def find_declining_dip_tasks(
         avg_daily_decline, decline_days = _avg_daily_decline(
             min_series, highest_min, latest_min
         )
+        # 要求跌幅期跨越至少 min_decline_days 个日历日，
+        # 避免「单日峰值→次日回落」这种伪下跌被算成持续下跌。
+        if decline_days < min_decline_days:
+            continue
 
         lowest_item = _find_lowest_ai_recommended_item(
             keyword=keyword, ai_ids=ai_ids, window_days=window_days
