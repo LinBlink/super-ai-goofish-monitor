@@ -28,6 +28,8 @@ The upstream remote is kept as a reference (`upstream`) but every change ships f
 - **Price-Trend & Buy-the-Dip**: The dashboard surfaces "Persistent Drops — Buy-the-Dip Candidates" with total decline, current dip price, period high, and a mini price curve. Click to open the listing directly.
 - **Smart Result Sorting + Date Filter**: AI-recommended items float to the top; the rest are sorted by price ascending. A quick date filter (All / 1 day / 3 days / 7 days) sits next to it.
 - **Account & Proxy Rotation**: Multi-account pool with automatic switching on failure; proxy pool rotation further lowers the risk of being rate-limited.
+- **Batch Task Edit**: Update "notification push / search pages / fresh-listing window" for multiple selected tasks at once; unchanged fields keep their original values.
+- **Bilingual UI**: Toggle Chinese / English from the top-right corner; all UI copy and hints are fully localized.
 - **Scheduler Master Switch**: Pause all scheduled triggers from the system settings during maintenance windows.
 - **Docker Deployment**: Built-in Chromium; one container, ready to run.
 
@@ -238,6 +240,14 @@ cd web-ui && npm run build   # artifacts written to repo-root dist/
   ```bash
   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
   cd web-ui && npm run build
+  ```
+
+- Mobile screenshots: `web-ui/scripts/shoot.mjs` uses Playwright to capture every page at a 390×844 mobile viewport into `web-ui/docs/screenshots/`. It targets `http://localhost:4173` (`vite preview`) by default; point `BASE_URL` at a running real backend instead:
+
+  ```bash
+  cd web-ui && npm run build
+  node web-ui/scripts/shoot.mjs                                   # static build
+  BASE_URL=http://127.0.0.1:8000 node web-ui/scripts/shoot.mjs   # live backend with data
   ```
 
 ## Acknowledgments

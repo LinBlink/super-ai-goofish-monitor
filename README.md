@@ -28,6 +28,8 @@
 - **价格趋势与抄底机会**：监控概览直接展示「持续下跌可抄底」商品，按累计跌幅倒序排列，点击直达商品页
 - **结果智能排序与时间筛选**：AI 推荐商品优先展示，其余按价格升序；时间范围支持全部 / 一天内 / 三天内 / 七天内快速切换
 - **账号与代理轮换**：多账号池自动切换，代理池轮换配合失败重试降低风控
+- **批量修改任务**：对选中的多个任务一次性修改「通知推送 / 搜索页数 / 新发布范围」等字段，未修改项保持原值
+- **中英双语界面**：右上角一键切换中文 / English，界面文案与提示完整本地化
 - **定时调度总开关**：维护期一键暂停全部定时触发
 - **Docker 一键部署**：内置 Chromium，开箱即用
 
@@ -238,6 +240,14 @@ cd web-ui && npm run build   # 产物写入仓库根 dist/
   ```bash
   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
   cd web-ui && npm run build
+  ```
+
+- 移动端截图：`web-ui/scripts/shoot.mjs` 用 Playwright 以 390×844 移动视口自动截取各页面到 `web-ui/docs/screenshots/`，默认访问 `http://localhost:4173`（`vite preview`），可用 `BASE_URL` 指向已运行的真实后端：
+
+  ```bash
+  cd web-ui && npm run build
+  node web-ui/scripts/shoot.mjs                 # 截静态构建产物
+  BASE_URL=http://127.0.0.1:8000 node web-ui/scripts/shoot.mjs   # 截带数据的真实后端
   ```
 
 ## 致谢
