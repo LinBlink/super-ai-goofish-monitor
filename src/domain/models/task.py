@@ -345,8 +345,8 @@ class TaskBatchUpdateRequest(BaseModel):
     def validate_task_ids(cls, value: List[int]) -> List[int]:
         if not value:
             raise ValueError("task_ids 不能为空。")
-        if not all(isinstance(i, int) and i > 0 for i in value):
-            raise ValueError("task_ids 必须全部为正整数。")
+        if not all(isinstance(i, int) and i >= 0 for i in value):
+            raise ValueError("task_ids 必须全部为非负整数。")
         return value
 
 
