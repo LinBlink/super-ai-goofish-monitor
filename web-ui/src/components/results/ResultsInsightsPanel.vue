@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResultInsights } from '@/types/result.d.ts'
-import PriceTrendChart from './PriceTrendChart.vue'
+import MinPriceChart from './MinPriceChart.vue'
 import { formatDateTime } from '@/i18n'
 
 const props = defineProps<{
@@ -48,72 +48,74 @@ const latestSnapshotText = computed(() => {
 </script>
 
 <template>
-  <section class="app-surface mb-6 overflow-hidden border-none">
-    <div class="grid gap-8 px-6 py-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">
-      <div class="space-y-5">
-        <div class="space-y-2">
-          <p class="text-xs uppercase tracking-[0.28em] text-primary/70">Market Intelligence</p>
-          <h2 class="text-3xl font-semibold text-slate-900">
-            {{ selectedTaskLabel || t('results.insights.defaultTitle') }}
-          </h2>
-          <p class="max-w-2xl text-sm leading-6 text-slate-500">
-            {{ t('results.insights.subtitle') }}
-          </p>
-        </div>
+  <section class="xy-card-flat p-3">
+    <header class="mb-2">
+      <p class="text-[10px] font-semibold uppercase tracking-widest" style="color: hsl(56 100% 36%)">
+        Market Intelligence
+      </p>
+      <h2 class="mt-0.5 text-base font-black tracking-tight text-foreground">
+        {{ selectedTaskLabel || t('results.insights.defaultTitle') }}
+      </h2>
+      <p class="mt-0.5 text-[12px] text-slate-500">{{ t('results.insights.subtitle') }}</p>
+    </header>
 
-        <div class="grid gap-4 md:grid-cols-3">
-          <article
-            v-for="card in summaryCards"
-            :key="card.label"
-            class="app-surface-subtle p-4"
-          >
-            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ card.label }}</p>
-            <p class="mt-3 text-2xl font-semibold text-slate-900">{{ card.value }}</p>
-            <p class="mt-2 text-xs text-slate-500">{{ card.hint }}</p>
-          </article>
-        </div>
+    <div class="grid gap-2 md:grid-cols-3">
+      <article
+        v-for="card in summaryCards"
+        :key="card.label"
+        class="xy-card-flat p-2.5"
+      >
+        <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ card.label }}</p>
+        <p class="mt-1 text-lg font-black tabular text-foreground">{{ card.value }}</p>
+        <p class="mt-0.5 text-[11px] text-slate-500">{{ card.hint }}</p>
+      </article>
+    </div>
 
-        <PriceTrendChart :points="insights?.daily_trend || []" />
+    <div class="mt-2 grid gap-2 sm:grid-cols-3">
+      <div class="xy-card-flat px-3 py-2 text-[12px] text-slate-600">
+        {{ t('results.insights.currentMedian') }}
+        <span class="font-semibold text-foreground">
+          {{ insights?.market_summary.median_price ? `¥${insights.market_summary.median_price}` : '—' }}
+        </span>
       </div>
-
-      <div class="space-y-4">
-        <div class="rounded-[28px] border border-primary/10 bg-gradient-to-br from-primary to-sky-700 p-6 text-primary-foreground shadow-[0_16px_40px_rgba(37,99,235,0.22)]">
-          <p class="text-xs uppercase tracking-[0.24em] text-primary-foreground/70">Trend Reading</p>
-          <p class="mt-4 text-3xl font-semibold">
-            {{ t('results.insights.snapshotCount', { count: insights?.market_summary.sample_count || 0 }) }}
-          </p>
-          <p class="mt-2 text-sm leading-6 text-primary-foreground/80">
-            {{ t('results.insights.trendReading') }}
-          </p>
-        </div>
-
-        <div class="app-surface-subtle p-5">
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Snapshot Note</p>
-          <p class="mt-4 text-sm leading-6 text-slate-600">
-            {{ latestSnapshotText }}
-          </p>
-          <div class="mt-4 grid gap-3 text-sm text-slate-600">
-            <div class="rounded-2xl bg-slate-50 px-4 py-3">
-              {{ t('results.insights.currentMedian') }}
-              <span class="font-semibold text-slate-900">
-                {{ insights?.market_summary.median_price ? `¥${insights.market_summary.median_price}` : '—' }}
-              </span>
-            </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3">
-              {{ t('results.insights.historyMin') }}
-              <span class="font-semibold text-slate-900">
-                {{ insights?.history_summary.min_price ? `¥${insights.history_summary.min_price}` : '—' }}
-              </span>
-            </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3">
-              {{ t('results.insights.historyMax') }}
-              <span class="font-semibold text-slate-900">
-                {{ insights?.history_summary.max_price ? `¥${insights.history_summary.max_price}` : '—' }}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div class="xy-card-flat px-3 py-2 text-[12px] text-slate-600">
+        {{ t('results.insights.historyMin') }}
+        <span class="font-semibold text-foreground">
+          {{ insights?.history_summary.min_price ? `¥${insights.history_summary.min_price}` : '—' }}
+        </span>
       </div>
+      <div class="xy-card-flat px-3 py-2 text-[12px] text-slate-600">
+        {{ t('results.insights.historyMax') }}
+        <span class="font-semibold text-foreground">
+          {{ insights?.history_summary.max_price ? `¥${insights.history_summary.max_price}` : '—' }}
+        </span>
+      </div>
+    </div>
+
+    <p class="mt-2 text-[11px] text-slate-400">{{ latestSnapshotText }}</p>
+
+    <div
+      class="mt-2 rounded-xl p-2"
+      style="background-color: hsl(56 100% 95%)"
+    >
+      <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: hsl(56 100% 36%)">
+        {{ t('results.insights.snapshotCount', { count: insights?.market_summary.sample_count || 0 }) }}
+      </p>
+      <p class="mt-1 text-[12px] leading-relaxed text-slate-700">
+        {{ t('results.insights.trendReading') }}
+      </p>
+    </div>
+
+    <div v-if="(insights?.daily_trend?.length ?? 0) > 0" class="mt-2">
+      <MinPriceChart
+        :points="(insights?.daily_trend || []).map((p) => ({ day: p.day, min_price: p.min_price }))"
+        :height="80"
+        :width="600"
+      />
     </div>
   </section>
 </template>
+
+
+
+

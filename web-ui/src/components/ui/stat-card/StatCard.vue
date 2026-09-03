@@ -16,7 +16,7 @@ const props = withDefaults(
 )
 
 const toneClasses: Record<string, string> = {
-  primary: 'bg-primary/10 text-primary',
+  primary: 'bg-primary/15 text-primary',
   emerald: 'bg-emerald-500/10 text-emerald-600',
   amber: 'bg-amber-500/15 text-amber-600',
   sky: 'bg-sky-500/10 text-sky-600',
@@ -25,7 +25,7 @@ const toneClasses: Record<string, string> = {
 </script>
 
 <template>
-  <div class="app-card p-5">
+  <div class="xy-card-flat p-5">
     <div class="flex items-center justify-between">
       <p class="text-sm font-semibold text-slate-500">{{ label }}</p>
       <div
@@ -39,3 +39,8 @@ const toneClasses: Record<string, string> = {
     <p v-if="hint" class="mt-1 text-xs font-medium text-slate-400">{{ hint }}</p>
   </div>
 </template>
+
+
+
+
+

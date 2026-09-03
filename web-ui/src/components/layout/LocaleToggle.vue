@@ -26,7 +26,7 @@ const localeOptions = [
       :key="option.value"
       type="button"
       class="rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors sm:px-3"
-      :class="locale === option.value ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'"
+      :class="locale === option.value ? 'bg-primary text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-100'"
       @click="toggleLocale(option.value)"
     >
       <span class="sm:hidden">{{ option.shortLabel }}</span>
@@ -34,3 +34,8 @@ const localeOptions = [
     </button>
   </div>
 </template>
+
+
+
+
+

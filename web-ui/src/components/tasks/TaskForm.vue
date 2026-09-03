@@ -54,16 +54,16 @@ const cronPresets = computed(() => [
   { value: '0 10 * * 6,0', label: t('tasks.form.cron.weekend10') },
 ])
 
-// 判断 cron 值是否为预设值
+// 判断 cron 值是否为预设�?
 function isPresetCronValue(value: string): boolean {
   if (!value) return true
   return cronPresets.value.some((preset) => preset.value === value)
 }
 
-// 判断当前 cron 是否为预设值
+// 判断当前 cron 是否为预设�?
 const isPresetCron = computed(() => isPresetCronValue(form.value.cron))
 
-// 预设选择的值
+// 预设选择的�?
 const presetCronValue = computed({
   get: () => {
     if (!isPresetCron.value) return EMPTY_CRON_VALUE
@@ -119,7 +119,7 @@ watch(() => [props.mode, props.initialData, props.defaultValues, props.defaultAc
     }
     keywordRulesInput.value = (defaultValues.keyword_rules || props.initialData.keyword_rules || []).join('\n')
     blacklistKeywordsInput.value = (defaultValues.blacklist_keywords || props.initialData.blacklist_keywords || []).join('\n')
-    // 编辑模式下，根据 cron 值判断模式
+    // 编辑模式下，根据 cron 值判断模�?
     const cronVal = defaultValues.cron ?? props.initialData.cron ?? ''
     cronMode.value = isPresetCronValue(cronVal) ? 'preset' : 'custom'
   } else {
@@ -160,7 +160,7 @@ watch(() => [props.mode, props.initialData, props.defaultValues, props.defaultAc
     if (defaultValues.blacklist_keywords && defaultValues.blacklist_keywords.length > 0) {
       blacklistKeywordsInput.value = defaultValues.blacklist_keywords.join('\n')
     }
-    // 创建模式下，根据默认值判断模式
+    // 创建模式下，根据默认值判断模�?
     const cronVal = defaultValues.cron ?? ''
     cronMode.value = isPresetCronValue(cronVal) ? 'preset' : 'custom'
   }
@@ -484,3 +484,8 @@ function handleSubmit() {
     </div>
   </form>
 </template>
+
+
+
+
+
