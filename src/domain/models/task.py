@@ -372,12 +372,13 @@ class TaskBatchUpdate(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self):
-        if (
-            self.notify_enabled is None
-            and self.max_pages is None
-            and self.new_publish_option is None
-        ):
-            raise ValueError("至少需要指定一个批量修改字段（notify_enabled / max_pages / new_publish_option）。")
+        # 用 model_fields_set 判断「调用方是否显式传了字段」，
+        # 而不是看当前值 —— 否则 { "new_publish_option": "" } 经 normalize 后
+        # 变成 None，会被误判为「没传字段」而拒绝 422。
+        if not self.model_fields_set:
+            raise ValueError(
+                "至少需要指定一个批量修改字段（notify_enabled / max_pages / new_publish_option）。"
+            )
         return self
 
     @field_validator("max_pages")

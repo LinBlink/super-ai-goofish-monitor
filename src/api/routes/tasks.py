@@ -187,6 +187,14 @@ async def batch_update_tasks(
     """批量修改任务的指定字段（仅支持通知推送 / 搜索页数 / 新发布范围）。"""
     raw_ids = payload.task_ids
     update_payload = payload.updates.model_dump(exclude_unset=True)
+    # notify_enabled / max_pages 在 Task 上是必填字段，
+    # null 视作「不修改」；new_publish_option 是 Optional[str]，null 表示「清空」。
+    for non_optional_field in ("notify_enabled", "max_pages"):
+        if (
+            non_optional_field in update_payload
+            and update_payload[non_optional_field] is None
+        ):
+            update_payload.pop(non_optional_field)
     if not update_payload:
         raise HTTPException(status_code=400, detail="至少需要指定一个修改字段。")
 
