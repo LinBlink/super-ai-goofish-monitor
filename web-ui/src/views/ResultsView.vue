@@ -5,10 +5,8 @@ import { useResults } from '@/composables/useResults'
 import ResultsFilterBar from '@/components/results/ResultsFilterBar.vue'
 import ResultsGrid from '@/components/results/ResultsGrid.vue'
 import ResultsInsightsPanel from '@/components/results/ResultsInsightsPanel.vue'
-import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import { Layers } from 'lucide-vue-next'
+import { Inbox } from 'lucide-vue-next'
 import {
   Dialog,
   DialogContent,
@@ -45,18 +43,15 @@ const selectedTaskLabel = computed(() => {
   return match.taskName || null
 })
 
-const deleteConfirmText = computed(() => {
-  return selectedTaskLabel.value
+const deleteConfirmText = computed(() =>
+  selectedTaskLabel.value
     ? t('results.filters.deleteDialogWithTask', { task: selectedTaskLabel.value })
-    : t('results.filters.deleteDialogFallback')
-})
+    : t('results.filters.deleteDialogFallback'),
+)
 
 function openDeleteDialog() {
   if (!selectedFile.value) {
-    toast({
-      title: t('results.filters.noResultToDelete'),
-      variant: 'destructive',
-    })
+    toast({ title: t('results.filters.noResultToDelete'), variant: 'destructive' })
     return
   }
   isDeleteDialogOpen.value = true
@@ -64,10 +59,7 @@ function openDeleteDialog() {
 
 function handleExportResults() {
   if (!selectedFile.value) {
-    toast({
-      title: t('results.filters.noResultToExport'),
-      variant: 'destructive',
-    })
+    toast({ title: t('results.filters.noResultToExport'), variant: 'destructive' })
     return
   }
   exportSelectedResults()
@@ -91,12 +83,20 @@ async function handleDeleteResults() {
 </script>
 
 <template>
-  <div>
-    <PageHeader :title="t('results.title')" :description="t('results.description')" :icon="Layers" />
+  <div class="space-y-3">
+    <header class="xy-card-flat flex items-center gap-2 p-2.5">
+      <span
+        class="flex h-7 w-7 items-center justify-center rounded-xl"
+        style="background-color: hsl(56 100% 52%)"
+      >
+        <Inbox class="h-4 w-4 text-slate-900" />
+      </span>
+      <h1 class="truncate text-base font-black text-foreground">{{ t('results.title') }}</h1>
+      <p class="hidden text-[12px] text-slate-500 sm:block">{{ t('results.description') }}</p>
+    </header>
 
-    <div v-if="error" class="app-alert-error mb-4" role="alert">
-      <strong class="font-bold">{{ t('common.error') }}</strong>
-      <span class="block sm:inline">{{ error.message }}</span>
+    <div v-if="error" class="xy-card-flat border-rose-200 bg-rose-50/40 p-3 text-sm text-rose-700">
+      {{ error.message }}
     </div>
 
     <ResultsFilterBar
@@ -121,20 +121,24 @@ async function handleDeleteResults() {
     <ResultsGrid :results="results" :is-loading="isLoading" @toggle-block="toggleItemBlock" />
 
     <Dialog v-model:open="isDeleteDialogOpen">
-      <DialogContent class="sm:max-w-[420px]">
+      <DialogContent class="max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{{ t('results.filters.deleteDialogTitle') }}</DialogTitle>
-          <DialogDescription>
-            {{ deleteConfirmText }}
-          </DialogDescription>
+          <DialogDescription>{{ deleteConfirmText }}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</Button>
-          <Button variant="destructive" :disabled="isLoading" @click="handleDeleteResults">
+          <button type="button" class="xy-btn-outline" @click="isDeleteDialogOpen = false">
+            {{ t('common.cancel') }}
+          </button>
+          <button type="button" class="xy-btn-danger" :disabled="isLoading" @click="handleDeleteResults">
             {{ t('results.filters.confirmDelete') }}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   </div>
 </template>
+
+
+
+

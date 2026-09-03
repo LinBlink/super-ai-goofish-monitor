@@ -21,3 +21,8 @@ const delegatedProps = reactiveOmit(props, "class")
     <slot />
   </TabsList>
 </template>
+
+
+
+
+

@@ -12,3 +12,8 @@ const props = defineProps<SelectLabelProps & { class?: HTMLAttributes["class"] }
     <slot />
   </SelectLabel>
 </template>
+
+
+
+
+

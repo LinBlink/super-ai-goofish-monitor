@@ -10,3 +10,8 @@ const props = defineProps<DialogTriggerProps>()
     <slot />
   </DialogTrigger>
 </template>
+
+
+
+
+

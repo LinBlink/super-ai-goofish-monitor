@@ -3,14 +3,14 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResultItem } from '@/types/result.d.ts'
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import Badge from '@/components/ui/badge/Badge.vue'
-import { ExternalLink, TrendingUp, TrendingDown, User, Clock, CheckCircle2, XCircle, AlertCircle, EyeOff, Eye } from 'lucide-vue-next'
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  EyeOff,
+  Eye,
+  TrendingDown,
+} from 'lucide-vue-next'
 import { formatDateTime } from '@/i18n'
 
 interface Props {
@@ -24,21 +24,33 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const info = props.item.商品信息
-const seller = props.item.卖家信息
 const ai = props.item.ai_analysis
 const priceInsight = props.item.price_insight
 
-const isRecommended = ai?.is_recommended === true
 const recommendationStatus = computed(() => {
-  if (ai?.is_recommended === true) return { label: t('results.card.strongRecommend'), color: 'bg-emerald-500', icon: CheckCircle2, text: 'text-emerald-600', bg: 'bg-emerald-50' }
-  if (ai?.is_recommended === false) return { label: t('results.card.notRecommended'), color: 'bg-rose-500', icon: XCircle, text: 'text-rose-600', bg: 'bg-rose-50' }
-  return { label: t('results.card.pending'), color: 'bg-amber-500', icon: AlertCircle, text: 'text-amber-600', bg: 'bg-amber-50' }
+  if (ai?.is_recommended === true)
+    return {
+      label: t('results.card.strongRecommend'),
+      icon: CheckCircle2,
+      tone: 'bg-emerald-50 text-emerald-700',
+    }
+  if (ai?.is_recommended === false)
+    return {
+      label: t('results.card.notRecommended'),
+      icon: XCircle,
+      tone: 'bg-rose-50 text-rose-700',
+    }
+  return {
+    label: t('results.card.pending'),
+    icon: AlertCircle,
+    tone: 'bg-amber-50 text-amber-700',
+  }
 })
 
 const imageUrl = info.商品图片列表?.[0] || info.商品主图链接 || ''
 const crawlTime = props.item.爬取时间
   ? formatDateTime(props.item.爬取时间, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-  : t('common.unknown')
+  : ''
 const matchScore = ai?.value_score ?? 0
 const isHidden = computed(() => props.item._effective_hidden === true || props.item._status === 'hidden')
 const canToggleBlock = computed(() => props.item._hidden_reason !== 'expired')
@@ -49,128 +61,95 @@ const hiddenLabel = computed(() => {
 </script>
 
 <template>
-  <Card class="group flex flex-col h-full border-none shadow-glass hover:shadow-card-hover transition-all duration-300 rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm" :class="{ 'opacity-50': isHidden }">
-    <!-- Image Header -->
-    <div class="relative aspect-[4/3] overflow-hidden">
-      <div class="absolute inset-0 bg-slate-200 animate-pulse" v-if="!imageUrl"></div>
+  <article class="xy-card overflow-hidden" :class="isHidden ? 'opacity-60' : ''">
+    <!-- Image -->
+    <a
+      :href="info.商品链接"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="relative block aspect-square overflow-hidden"
+    >
+      <div v-if="!imageUrl" class="absolute inset-0 bg-[#eaeaea]"></div>
       <img
         v-else
         :src="imageUrl"
         :alt="info.商品标题"
-        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+        class="h-full w-full object-cover"
         loading="lazy"
       />
-      <!-- Hidden overlay -->
-      <div v-if="isHidden" class="absolute inset-0 bg-black/30 flex items-center justify-center">
-        <span class="text-white/80 text-xs font-semibold uppercase tracking-wider">{{ hiddenLabel }}</span>
+      <div v-if="isHidden" class="absolute inset-0 flex items-center justify-center bg-black/40">
+        <span class="rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700">
+          {{ hiddenLabel }}
+        </span>
       </div>
-      <!-- Overlays -->
-      <div class="absolute top-3 left-3 flex gap-2">
-        <Badge v-if="isRecommended && !isHidden" variant="default" class="bg-emerald-500/90 backdrop-blur-md border-none shadow-sm">
-          {{ t('results.card.curated') }}
-        </Badge>
-      </div>
-      <div class="absolute top-3 right-3 flex gap-1.5">
+      <div class="absolute right-1.5 top-1.5 flex gap-1">
         <button
           v-if="canToggleBlock"
           type="button"
-          @click="emit('toggle-block', props.item)"
+          class="rounded-full bg-white/85 p-1.5 text-slate-700 shadow-sm hover:bg-white"
           :aria-label="isHidden ? t('results.card.unblock') : t('results.card.block')"
-          class="flex rounded-full bg-white/30 p-1.5 text-white backdrop-blur-md border border-white/40 shadow-sm opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 hover:bg-white/50"
+          @click.prevent.stop="emit('toggle-block', props.item)"
         >
-          <EyeOff v-if="!isHidden" class="w-4 h-4" />
-          <Eye v-else class="w-4 h-4" />
+          <EyeOff v-if="!isHidden" class="h-3.5 w-3.5" />
+          <Eye v-else class="h-3.5 w-3.5" />
         </button>
-         <a
-           :href="info.商品链接"
-           target="_blank"
-           rel="noopener noreferrer"
-           :aria-label="t('results.card.detail')"
-           class="flex rounded-full bg-white/30 p-1.5 text-white backdrop-blur-md border border-white/40 shadow-sm opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-         >
-            <ExternalLink class="w-4 h-4" />
-         </a>
       </div>
-    </div>
+    </a>
 
-    <CardHeader class="p-4 pb-2">
-      <div class="flex justify-between items-start gap-3">
-        <div class="flex-grow min-w-0">
-          <CardTitle class="text-base font-semibold text-slate-800 leading-snug">
-            <a :href="info.商品链接" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">
-              {{ info.商品标题 }}
-            </a>
-          </CardTitle>
-        </div>
-      </div>
-      <div class="flex items-baseline gap-1 mt-2">
-        <span class="text-2xl font-bold text-rose-600 tracking-tight">{{ info.当前售价 }}</span>
-        <span v-if="info['商品原价']" class="text-xs text-slate-400 line-through mb-1">{{ info['商品原价'] }}</span>
-      </div>
-    </CardHeader>
-
-    <CardContent class="p-4 pt-2 flex-grow">
-      <!-- AI Insight Section -->
-      <div class="rounded-xl p-3 border border-slate-100" :class="recommendationStatus.bg">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <component :is="recommendationStatus.icon" class="w-4 h-4" :class="recommendationStatus.text" />
-            <span class="text-sm font-bold" :class="recommendationStatus.text">{{ recommendationStatus.label }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-             <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">AI Match</span>
-             <span class="text-sm font-black" :class="recommendationStatus.text">{{ matchScore }}%</span>
-          </div>
-        </div>
-        
-        <div class="w-full h-1.5 bg-white/50 rounded-full overflow-hidden mb-3">
-          <div 
-            class="h-full transition-all duration-1000 ease-out rounded-full" 
-            :class="recommendationStatus.color"
-            :style="{ width: `${matchScore}%` }"
-          ></div>
-        </div>
-
-        <p class="text-xs leading-relaxed text-slate-600">
-           {{ ai?.reason || t('results.card.analyzing') }}
-        </p>
-      </div>
-
-      <!-- Price Stats Grid -->
-      <div v-if="priceInsight?.observation_count" class="mt-4 grid grid-cols-2 gap-3">
-        <div class="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50 group/stat">
-          <div class="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 mb-1">
-            <TrendingUp class="w-3 h-3" /> {{ t('results.card.marketAvg') }}
-          </div>
-          <div class="text-sm font-bold text-slate-700">
-            {{ priceInsight.market_avg_price ? `¥${priceInsight.market_avg_price}` : '—' }}
-          </div>
-        </div>
-        <div class="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
-          <div class="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 mb-1">
-            <TrendingDown class="w-3 h-3" /> {{ t('results.card.historicalLow') }}
-          </div>
-          <div class="text-sm font-bold text-slate-700">
-            {{ priceInsight.min_price ? `¥${priceInsight.min_price}` : '—' }}
-          </div>
-        </div>
-      </div>
-    </CardContent>
-
-    <CardFooter class="px-4 py-3 bg-slate-50/30 border-t border-slate-100/60 flex items-center justify-between text-[10px]">
-      <div class="flex items-center gap-3 text-slate-400">
-        <div class="flex items-center gap-1">
-          <User class="w-3 h-3" />
-          <span class="truncate max-w-[60px]">{{ seller.卖家昵称 || info.卖家昵称 || t('results.card.anonymous') }}</span>
-        </div>
-        <div class="flex items-center gap-1">
-          <Clock class="w-3 h-3" />
-          <span>{{ crawlTime }}</span>
-        </div>
-      </div>
-      <a :href="info.商品链接" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1 text-primary font-bold hover:gap-1.5 transition-all">
-        {{ t('results.card.detail') }} <ExternalLink class="w-3 h-3" />
+    <!-- Content -->
+    <div class="space-y-1.5 p-2.5">
+      <a
+        :href="info.商品链接"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground hover:text-foreground"
+      >
+        {{ info.商品标题 }}
       </a>
-    </CardFooter>
-  </Card>
+
+      <div class="flex items-baseline gap-1.5">
+        <span class="xy-price-sign">¥</span>
+        <span class="xy-price text-[20px] tabular">{{ info.当前售价 }}</span>
+        <span
+          v-if="info['商品原价'] && info['商品原价'] !== info.当前售价"
+          class="text-[11px] text-slate-400 line-through tabular"
+        >¥{{ info['商品原价'] }}</span>
+      </div>
+
+      <!-- AI 推荐状�?-->
+      <div
+        v-if="ai"
+        class="flex items-center justify-between rounded-lg px-1.5 py-1 text-[10px] font-semibold"
+        :class="recommendationStatus.tone"
+      >
+        <span class="flex items-center gap-1 truncate">
+          <component :is="recommendationStatus.icon" class="h-3 w-3 shrink-0" />
+          <span class="truncate">{{ recommendationStatus.label }}</span>
+        </span>
+        <span class="tabular">{{ matchScore }}%</span>
+      </div>
+
+      <!-- 价格洞察 -->
+      <div v-if="priceInsight?.observation_count" class="flex items-center gap-1 text-[10px] text-slate-500">
+        <TrendingDown class="h-3 w-3" />
+        <span class="tabular">
+          {{ t('results.card.historicalLow') }} ¥{{ priceInsight.min_price }}
+        </span>
+      </div>
+
+      <p class="flex items-center gap-1 text-[10px] text-slate-400">
+        <ExternalLink class="h-3 w-3" />
+        <a
+          :href="info.商品链接"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="truncate hover:text-slate-600"
+        >{{ crawlTime }}</a>
+      </p>
+    </div>
+  </article>
 </template>
+
+
+
+

@@ -48,7 +48,7 @@ async function handleLogin() {
 <template>
   <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-100 px-4">
     <div aria-hidden="true" class="absolute inset-0">
-      <div class="absolute left-[-10%] top-[-10%] h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
+      <div class="absolute left-[-10%] top-[-10%] h-72 w-72 rounded-full bg-primary/15 blur-3xl"></div>
       <div class="absolute bottom-[-10%] right-[-5%] h-72 w-72 rounded-full bg-blue-300/10 blur-3xl"></div>
     </div>
     <div class="absolute right-6 top-6">
@@ -88,3 +88,8 @@ async function handleLogin() {
     </Card>
   </div>
 </template>
+
+
+
+
+

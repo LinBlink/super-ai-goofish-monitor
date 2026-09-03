@@ -3,22 +3,26 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { listAccounts, getAccount, createAccount, updateAccount, deleteAccount, type AccountItem } from '@/api/accounts'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toast'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import { Users } from 'lucide-vue-next'
+import { Users, Pencil, Trash2, Plus, FileText, ExternalLink as LinkIcon } from 'lucide-vue-next'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
 const { t } = useI18n()
+const router = useRouter()
 
 const accounts = ref<AccountItem[]>([])
 const isLoading = ref(false)
 const isSaving = ref(false)
-const router = useRouter()
 
 const isCreateDialogOpen = ref(false)
 const isEditDialogOpen = ref(false)
@@ -124,148 +128,154 @@ onMounted(fetchAccounts)
 </script>
 
 <template>
-  <div>
-    <PageHeader :title="t('accounts.title')" :description="t('accounts.description')" :icon="Users">
-      <template #actions>
-        <Button variant="gradient" class="w-full sm:w-auto" @click="openCreateDialog">{{ t('accounts.add') }}</Button>
-      </template>
-    </PageHeader>
+  <div class="space-y-3">
+    <header class="xy-card-flat flex items-center gap-2 p-2.5">
+      <span
+        class="flex h-7 w-7 items-center justify-center rounded-xl"
+        style="background-color: hsl(56 100% 52%)"
+      >
+        <Users class="h-4 w-4 text-slate-900" />
+      </span>
+      <h1 class="truncate text-base font-black text-foreground">{{ t('accounts.title') }}</h1>
+      <span class="xy-chip">{{ accounts.length }}</span>
+      <button type="button" class="xy-btn-primary ml-auto h-9 text-[13px]" @click="openCreateDialog">
+        <Plus class="h-3.5 w-3.5" />
+        {{ t('accounts.add') }}
+      </button>
+    </header>
 
-    <Card class="app-surface mb-6 border-none">
-      <CardHeader>
-        <CardTitle>{{ t('accounts.cookieGuide.title') }}</CardTitle>
-      </CardHeader>
-      <CardContent class="text-sm text-gray-600">
-        <ol class="list-decimal list-inside space-y-1">
-          <li>
-            {{ t('accounts.cookieGuide.step1Prefix') }}
-            <a
-              class="text-blue-600 hover:underline"
-              href="https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ t('accounts.cookieGuide.extension') }}</a>
-          </li>
-          <li>
-            {{ t('accounts.cookieGuide.step2Prefix') }}
-            <a
-              class="text-blue-600 hover:underline"
-              href="https://www.goofish.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ t('accounts.cookieGuide.website') }}</a>
-          </li>
-          <li>{{ t('accounts.cookieGuide.step3') }}</li>
-          <li>{{ t('accounts.cookieGuide.step4') }}</li>
-          <li>{{ t('accounts.cookieGuide.step5') }}</li>
-        </ol>
-      </CardContent>
-    </Card>
+    <!-- Cookie 引导�?-->
+    <section class="xy-card-flat border-[#ffe60f]/40 p-3">
+      <h2 class="mb-2 text-[13px] font-bold text-foreground">{{ t('accounts.cookieGuide.title') }}</h2>
+      <ol class="space-y-1 text-[12px] leading-relaxed text-slate-600">
+        <li>
+          {{ t('accounts.cookieGuide.step1Prefix') }}
+          <a
+            class="font-semibold"
+            style="color: hsl(var(--op))"
+            href="https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ t('accounts.cookieGuide.extension') }}
+            <LinkIcon class="inline h-3 w-3" />
+          </a>
+        </li>
+        <li>
+          {{ t('accounts.cookieGuide.step2Prefix') }}
+          <a
+            class="font-semibold"
+            style="color: hsl(var(--op))"
+            href="https://www.goofish.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ t('accounts.cookieGuide.website') }}
+            <LinkIcon class="inline h-3 w-3" />
+          </a>
+        </li>
+        <li>{{ t('accounts.cookieGuide.step3') }}</li>
+        <li>{{ t('accounts.cookieGuide.step4') }}</li>
+        <li>{{ t('accounts.cookieGuide.step5') }}</li>
+      </ol>
+    </section>
 
-    <Card class="app-surface border-none">
-      <CardHeader>
-        <CardTitle>{{ t('accounts.list.title') }}</CardTitle>
-        <CardDescription>{{ t('accounts.list.description') }}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="space-y-4 md:hidden">
-          <div v-if="isLoading" class="py-10 text-center text-sm text-muted-foreground">{{ t('common.loading') }}</div>
-          <div v-else-if="accounts.length === 0" class="py-10 text-center text-sm text-muted-foreground">{{ t('accounts.list.empty') }}</div>
-          <article
-            v-else
-            v-for="account in accounts"
-            :key="account.name"
-            class="app-surface-subtle p-4"
-          >
-            <div class="space-y-2">
-              <div class="flex items-center justify-between gap-3">
-                <h3 class="truncate text-base font-semibold text-slate-900">{{ account.name }}</h3>
-                <Button size="sm" variant="outline" @click="goCreateTask(account.name)">{{ t('accounts.list.createTask') }}</Button>
-              </div>
-              <p class="break-all text-sm text-slate-500">{{ account.path }}</p>
+    <!-- 账号列表 -->
+    <section>
+      <header class="mb-2 flex items-baseline justify-between">
+        <h2 class="text-[13px] font-bold text-foreground">{{ t('accounts.list.title') }}</h2>
+        <p class="text-[11px] text-slate-500">{{ t('accounts.list.description') }}</p>
+      </header>
+
+      <div v-if="isLoading" class="xy-card py-10 text-center text-sm text-slate-500">
+        {{ t('common.loading') }}
+      </div>
+      <div v-else-if="accounts.length === 0" class="xy-card py-10 text-center text-sm text-slate-500">
+        {{ t('accounts.list.empty') }}
+      </div>
+
+      <div v-else class="grid gap-2 sm:grid-cols-2">
+        <article
+          v-for="account in accounts"
+          :key="account.name"
+          class="xy-card flex flex-col gap-2 p-3"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <h3 class="truncate text-[14px] font-bold text-foreground">{{ account.name }}</h3>
+              <p class="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
+                <FileText class="h-3 w-3" />
+                <span class="truncate">{{ account.path }}</span>
+              </p>
             </div>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" class="flex-1 min-w-[120px]" @click="openEditDialog(account.name)">{{ t('accounts.list.update') }}</Button>
-              <Button size="sm" variant="destructive" class="flex-1 min-w-[120px]" @click="openDeleteDialog(account.name)">{{ t('accounts.list.delete') }}</Button>
-            </div>
-          </article>
-        </div>
-
-        <div class="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{{ t('accounts.list.name') }}</TableHead>
-                <TableHead>{{ t('accounts.list.file') }}</TableHead>
-                <TableHead class="text-right">{{ t('accounts.list.actions') }}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-if="isLoading">
-                <TableCell colspan="3" class="h-20 text-center text-muted-foreground">{{ t('common.loading') }}</TableCell>
-              </TableRow>
-              <TableRow v-else-if="accounts.length === 0">
-                <TableCell colspan="3" class="h-20 text-center text-muted-foreground">{{ t('accounts.list.empty') }}</TableCell>
-              </TableRow>
-              <TableRow v-else v-for="account in accounts" :key="account.name">
-                <TableCell class="font-medium">{{ account.name }}</TableCell>
-                <TableCell class="text-sm text-gray-500">{{ account.path }}</TableCell>
-                <TableCell class="text-right">
-                  <div class="flex justify-end gap-2">
-                    <Button size="sm" variant="outline" @click="goCreateTask(account.name)">{{ t('accounts.list.createTask') }}</Button>
-                    <Button size="sm" variant="outline" @click="openEditDialog(account.name)">{{ t('accounts.list.update') }}</Button>
-                    <Button size="sm" variant="destructive" @click="openDeleteDialog(account.name)">{{ t('accounts.list.delete') }}</Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+            <button
+              type="button"
+              class="xy-btn-ghost h-8 px-2 text-[12px]"
+              @click="goCreateTask(account.name)"
+            >
+              + {{ t('accounts.list.createTask') }}
+            </button>
+          </div>
+          <div class="flex gap-1.5">
+            <button
+              type="button"
+              class="xy-btn-outline h-7 flex-1 text-[12px]"
+              @click="openEditDialog(account.name)"
+            >
+              <Pencil class="h-3 w-3" />
+              {{ t('accounts.list.update') }}
+            </button>
+            <button
+              type="button"
+              class="xy-btn-outline h-7 flex-1 text-[12px] text-rose-500"
+              @click="openDeleteDialog(account.name)"
+            >
+              <Trash2 class="h-3 w-3" />
+              {{ t('accounts.list.delete') }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
 
     <Dialog v-model:open="isCreateDialogOpen">
-      <DialogContent class="sm:max-w-[700px]">
+      <DialogContent class="max-w-[640px]">
         <DialogHeader>
           <DialogTitle>{{ t('accounts.createDialog.title') }}</DialogTitle>
           <DialogDescription>{{ t('accounts.createDialog.description') }}</DialogDescription>
         </DialogHeader>
-        <div class="space-y-4">
-          <div class="grid gap-2">
+        <div class="space-y-3">
+          <div class="grid gap-1.5">
             <Label>{{ t('accounts.createDialog.name') }}</Label>
             <Input v-model="newName" :placeholder="t('accounts.createDialog.namePlaceholder')" />
           </div>
-          <div class="grid gap-2">
+          <div class="grid gap-1.5">
             <Label>{{ t('accounts.createDialog.jsonContent') }}</Label>
             <Textarea v-model="newContent" class="min-h-[200px]" :placeholder="t('accounts.createDialog.jsonPlaceholder')" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" @click="isCreateDialogOpen = false">{{ t('common.cancel') }}</Button>
-          <Button :disabled="isSaving" @click="handleCreateAccount">
+          <button type="button" class="xy-btn-outline" @click="isCreateDialogOpen = false">{{ t('common.cancel') }}</button>
+          <button type="button" class="xy-btn-primary" :disabled="isSaving" @click="handleCreateAccount">
             {{ isSaving ? t('common.saving') : t('common.save') }}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
     <Dialog v-model:open="isEditDialogOpen">
-      <DialogContent class="sm:max-w-[700px]">
+      <DialogContent class="max-w-[640px]">
         <DialogHeader>
           <DialogTitle>{{ t('accounts.editDialog.title', { name: editName }) }}</DialogTitle>
           <DialogDescription>{{ t('accounts.editDialog.description') }}</DialogDescription>
         </DialogHeader>
-        <div class="space-y-4">
-          <div class="grid gap-2">
-            <Label>{{ t('accounts.createDialog.jsonContent') }}</Label>
-            <Textarea v-model="editContent" class="min-h-[200px]" />
-          </div>
+        <div class="grid gap-1.5">
+          <Label>{{ t('accounts.createDialog.jsonContent') }}</Label>
+          <Textarea v-model="editContent" class="min-h-[200px]" />
         </div>
         <DialogFooter>
-          <Button variant="outline" @click="isEditDialogOpen = false">{{ t('common.cancel') }}</Button>
-          <Button :disabled="isSaving" @click="handleUpdateAccount">
+          <button type="button" class="xy-btn-outline" @click="isEditDialogOpen = false">{{ t('common.cancel') }}</button>
+          <button type="button" class="xy-btn-primary" :disabled="isSaving" @click="handleUpdateAccount">
             {{ isSaving ? t('common.saving') : t('common.save') }}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -277,12 +287,16 @@ onMounted(fetchAccounts)
           <DialogDescription>{{ t('accounts.deleteDialog.description', { name: deleteName }) }}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</Button>
-          <Button variant="destructive" :disabled="isSaving" @click="handleDeleteAccount">
+          <button type="button" class="xy-btn-outline" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</button>
+          <button type="button" class="xy-btn-danger" :disabled="isSaving" @click="handleDeleteAccount">
             {{ isSaving ? t('accounts.deleteDialog.deleting') : t('accounts.list.delete') }}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   </div>
 </template>
+
+
+
+

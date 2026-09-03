@@ -3,227 +3,202 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDashboard } from '@/composables/useDashboard'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import PriceTrendChart from '@/components/results/PriceTrendChart.vue'
-import { LayoutDashboard, Wallet, ListTodo, TrendingUp, Database, TrendingDown, ExternalLink, Tag } from 'lucide-vue-next'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import { StatCard } from '@/components/ui/stat-card'
+import {
+  TrendingDown,
+  Wallet,
+  Database,
+  ListTodo,
+  RefreshCcw,
+  Tag,
+  ArrowRight,
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const { t } = useI18n()
-const { taskSummaries, decliningDipTasks, error } = useDashboard()
+const { taskSummaries, decliningDipTasks, error, fetchSummary, isLoading } =
+  useDashboard()
 
 const stats = computed(() => {
   const list = taskSummaries.value
+  const withPrice = list.filter((t) => t.history_avg_price !== null)
+  const samples = list.reduce((sum, t) => sum + (t.history_sample_count || 0), 0)
   return {
     total: list.length,
-    withPrice: list.filter((t) => t.history_avg_price !== null).length,
-    samples: list.reduce((sum, t) => sum + (t.history_sample_count || 0), 0),
+    withPrice: withPrice.length,
+    samples,
   }
 })
 
-const priceOverviewRows = computed(() =>
-  [...taskSummaries.value].sort((a, b) => {
-    const aHasPrice = a.history_avg_price !== null ? 1 : 0
-    const bHasPrice = b.history_avg_price !== null ? 1 : 0
-    if (aHasPrice !== bHasPrice) return bHasPrice - aHasPrice
-    return a.task_name.localeCompare(b.task_name)
-  })
-)
-
-function openTaskPrice(item: { filename: string | null }) {
+function goTasks() {
+  router.push({ name: 'Tasks', query: { create: '1' } })
+}
+function openTask(item: { filename: string | null }) {
   if (item.filename) {
     router.push({ name: 'Results', query: { file: item.filename } })
   }
 }
-
 function openLowestItem(link: string) {
-  if (link) {
-    window.open(link, '_blank', 'noopener,noreferrer')
-  }
+  if (link) window.open(link, '_blank', 'noopener,noreferrer')
 }
-
-function goCreateTask() {
-  router.push({
-    name: 'Tasks',
-    query: { create: '1' },
-  })
-}
-
-function dipChartPoints(task: { trend: Array<{ day: string; min_price: number; avg_price: number | null; sample_count: number }> }) {
-  return task.trend.map((point) => ({
-    day: point.day.slice(5),
-    avg_price: null,
-    median_price: null,
-    min_price: point.min_price,
-  }))
-}
+void openLowestItem
 </script>
 
 <template>
-  <div class="space-y-8 animate-fade-in">
-    <PageHeader
-      :title="t('dashboard.title')"
-      :description="t('dashboard.description')"
-      :icon="LayoutDashboard"
-    >
-      <template #actions>
-        <Button variant="gradient" @click="goCreateTask">
-          {{ t('dashboard.createTask') }}
-        </Button>
-      </template>
-    </PageHeader>
+  <div class="space-y-4">
+    <!-- 顶部：欢�?+ 操作 -->
+    <section class="xy-card-flat relative overflow-hidden p-3 md:p-5">
+      <div
+        aria-hidden="true"
+        class="absolute inset-x-0 top-0 h-1"
+        style="background-color: hsl(56 100% 52%)"
+      ></div>
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            {{ t('dashboard.welcomeTag') }}
+          </p>
+          <h1 class="mt-1 truncate text-lg font-black tracking-tight text-foreground md:text-xl">
+            {{ t('dashboard.welcomeTitle') }}
+          </h1>
+          <p class="mt-1 hidden text-sm text-slate-500 md:block">
+            {{ t('dashboard.welcomeSubtitle') }}
+          </p>
+        </div>
+        <div class="flex shrink-0 gap-2">
+          <button
+            type="button"
+            class="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-slate-600 active:scale-95"
+            :aria-label="t('common.refresh')"
+            @click="fetchSummary"
+          >
+            <RefreshCcw class="h-4 w-4" :class="isLoading ? 'animate-spin' : ''" />
+          </button>
+          <button
+            type="button"
+            class="xy-btn-primary text-[13px]"
+            @click="goTasks"
+          >
+            <ListTodo class="h-4 w-4" />
+            <span>{{ t('dashboard.createTask') }}</span>
+          </button>
+        </div>
+      </div>
+    </section>
 
-    <div v-if="error" class="app-alert-error" role="alert">
+    <!-- 数据 stat chips -->
+    <section class="grid grid-cols-3 gap-2 md:gap-3">
+      <div class="xy-card flex flex-col gap-1 p-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            {{ t('dashboard.stats.totalTasks') }}
+          </span>
+          <ListTodo class="h-3.5 w-3.5 text-slate-400" />
+        </div>
+        <span class="text-xl font-black tabular text-foreground md:text-2xl">{{ stats.total }}</span>
+      </div>
+      <div class="xy-card flex flex-col gap-1 p-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            {{ t('dashboard.stats.priceTracked') }}
+          </span>
+          <Wallet class="h-3.5 w-3.5 text-slate-400" />
+        </div>
+        <span class="text-xl font-black tabular text-foreground md:text-2xl">{{ stats.withPrice }}</span>
+      </div>
+      <div class="xy-card flex flex-col gap-1 p-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            {{ t('dashboard.stats.samples') }}
+          </span>
+          <Database class="h-3.5 w-3.5 text-slate-400" />
+        </div>
+        <span class="text-xl font-black tabular text-foreground md:text-2xl">{{ stats.samples }}</span>
+      </div>
+    </section>
+
+    <div v-if="error" class="xy-card-flat border-rose-200 bg-rose-50/40 p-3 text-sm text-rose-700">
       {{ error.message }}
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <StatCard
-        :label="t('dashboard.stats.totalTasks')"
-        :value="String(stats.total)"
-        :icon="ListTodo"
-        tone="primary"
-        :hint="t('dashboard.stats.totalTasksHint')"
-      />
-      <StatCard
-        :label="t('dashboard.stats.priceTracked')"
-        :value="String(stats.withPrice)"
-        :icon="TrendingUp"
-        tone="emerald"
-        :hint="t('dashboard.stats.priceTrackedHint')"
-      />
-      <StatCard
-        :label="t('dashboard.stats.samples')"
-        :value="String(stats.samples)"
-        :icon="Database"
-        tone="sky"
-        :hint="t('dashboard.stats.samplesHint')"
-      />
-    </div>
-
-    <Card class="app-card border-none">
-      <CardHeader class="border-b border-rose-100/70 pb-5">
-        <CardTitle class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <TrendingDown class="w-5 h-5 text-rose-500" />
+    <!-- 持续下跌可抄�?-->
+    <section>
+      <header class="mb-2 flex items-center justify-between">
+        <h2 class="flex items-center gap-1.5 text-base font-black tracking-tight text-foreground">
+          <TrendingDown class="h-4 w-4" style="color: hsl(var(--price))" />
           {{ t('dashboard.deals.title') }}
-        </CardTitle>
-        <p class="mt-1 text-sm text-slate-500">{{ t('dashboard.deals.description') }}</p>
-      </CardHeader>
-      <CardContent class="p-6">
-        <div v-if="decliningDipTasks.length === 0" class="px-6 py-10 text-center text-sm text-slate-500">
-          {{ t('dashboard.deals.empty') }}
-        </div>
-        <div v-else class="grid gap-4 lg:grid-cols-2">
-          <div
-            v-for="task in decliningDipTasks"
-            :key="task.keyword + (task.task_id ?? '')"
-            class="app-card border-none p-4 hover:border-rose-200 transition-colors"
-          >
-            <!-- Task header -->
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <p class="text-base font-black text-slate-800 truncate" :title="task.task_name">{{ task.task_name }}</p>
-                <p class="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1">
-                  <Tag class="w-3 h-3" />
-                  {{ task.keyword }}
-                  <span class="mx-1 text-slate-300">·</span>
-                  {{ t('dashboard.deals.samplesShort', { count: task.trend_points }) }}
-                </p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{{ t('dashboard.deals.latestMinPrice') }}</p>
-                <p class="text-2xl font-black text-rose-500 leading-tight">¥{{ task.latest_min_price }}</p>
-                <div class="mt-1 flex items-center justify-end gap-1 text-rose-500">
-                  <TrendingDown class="w-3.5 h-3.5" />
-                  <span class="text-xs font-bold">{{ t('dashboard.deals.declinePercent', { percent: Math.abs(task.decline_percent).toFixed(1) }) }}</span>
-                </div>
-                <p
-                  v-if="task.decline_days > 1 && task.avg_daily_decline > 0"
-                  class="mt-0.5 text-[11px] font-medium text-slate-500"
-                  :title="t('dashboard.deals.avgDailyDecline', { amount: task.avg_daily_decline.toFixed(2) })"
-                >
-                  {{ t('dashboard.deals.avgDailyDeclineShort', { amount: task.avg_daily_decline.toFixed(2) }) }}
-                </p>
-              </div>
-            </div>
+        </h2>
+        <span class="xy-chip-yellow">{{ decliningDipTasks.length }}</span>
+      </header>
+      <p class="mb-3 text-[12px] leading-relaxed text-slate-500">
+        {{ t('dashboard.deals.description') }}
+      </p>
 
-            <!-- Trend chart (daily min price curve) -->
-            <PriceTrendChart class="mt-3" :points="dipChartPoints(task)" mode="min-only" />
+      <div v-if="decliningDipTasks.length === 0" class="xy-card p-8 text-center">
+        <p class="text-sm text-slate-500">{{ t('dashboard.deals.empty') }}</p>
+      </div>
 
-            <!-- Lowest-priced AI-recommended item in this task -->
-            <div class="mt-3 rounded-xl border border-dashed border-rose-200 bg-rose-50/40 p-3">
-              <p class="text-[10px] font-semibold uppercase tracking-wider text-rose-500/80">{{ t('dashboard.deals.lowestItemTitle') }}</p>
-              <div
-                v-if="task.lowest_item"
-                class="mt-1.5 flex items-start justify-between gap-2 cursor-pointer"
-                @click="openLowestItem(task.lowest_item.link)"
-              >
-                <p class="min-w-0 flex-1 text-sm font-medium text-slate-700 line-clamp-2" :title="task.lowest_item.title">
-                  {{ task.lowest_item.title || task.lowest_item.item_id }}
-                </p>
-                <div class="text-right shrink-0 flex flex-col items-end gap-0.5">
-                  <p class="text-base font-black text-rose-500 leading-none">¥{{ task.lowest_item.price_display || task.lowest_item.price }}</p>
-                  <span v-if="task.lowest_item.link" class="inline-flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-rose-500">
-                    {{ t('dashboard.deals.openItem') }}
-                    <ExternalLink class="w-3 h-3" />
-                  </span>
-                </div>
-              </div>
-              <p v-else class="mt-1.5 text-xs text-slate-400">{{ t('dashboard.deals.lowestItemEmpty') }}</p>
-            </div>
+      <div
+        v-else
+        class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
+        <DipProductCard
+          v-for="task in decliningDipTasks"
+          :key="task.keyword + (task.task_id ?? '')"
+          :data="task"
+        />
+      </div>
+    </section>
 
-            <p class="mt-2 text-[10px] text-slate-400">
-              {{ t('dashboard.deals.highestLabel') }} ¥{{ task.highest_min_price }}
-              <span class="mx-1 text-slate-300">·</span>
-              {{ t('dashboard.deals.lastSeen', { time: (task.last_seen_at || '').slice(0, 10) }) }}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card class="app-card border-none">
-      <CardHeader class="border-b border-slate-100/60 pb-5">
-        <CardTitle class="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <Wallet class="w-5 h-5 text-emerald-500" />
+    <!-- 价格概览 -->
+    <section v-if="taskSummaries.length > 0">
+      <header class="mb-2 flex items-center justify-between">
+        <h2 class="flex items-center gap-1.5 text-base font-black tracking-tight text-foreground">
+          <Wallet class="h-4 w-4 text-emerald-600" />
           {{ t('dashboard.priceOverview.title') }}
-        </CardTitle>
-        <p class="mt-1 text-sm text-slate-500">{{ t('dashboard.priceOverview.description') }}</p>
-      </CardHeader>
-      <CardContent class="p-6">
-        <div v-if="priceOverviewRows.length === 0" class="px-6 py-10 text-center text-sm text-slate-500">
-          {{ t('dashboard.priceOverview.empty') }}
-        </div>
-        <div v-else class="grid gap-5 lg:grid-cols-2">
-          <div
-            v-for="item in priceOverviewRows"
-            :key="item.task_id ?? item.task_name"
-            class="app-card cursor-pointer border-none p-4"
-            :class="item.filename ? 'hover:border-primary/40' : 'cursor-default'"
-            @click="openTaskPrice(item)"
-          >
-            <div class="flex items-center justify-between gap-4">
-              <div class="min-w-0">
-                <p class="text-sm font-bold text-slate-700 truncate">{{ item.task_name }}</p>
-                <p class="text-[11px] text-slate-400 truncate">{{ item.keyword }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-lg font-semibold text-slate-900">
-                  {{ item.history_avg_price !== null ? `¥${item.history_avg_price}` : t('dashboard.priceOverview.noHistory') }}
-                </p>
-                <p class="text-[11px] text-slate-400">
-                  <template v-if="item.history_sample_count">
-                    {{ t('dashboard.priceOverview.sampleLabel', { count: item.history_sample_count }) }}
-                  </template>
-                </p>
-              </div>
+        </h2>
+      </header>
+
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="item in [...taskSummaries].sort((x, y) => {
+            const a = x.history_avg_price !== null ? 1 : 0
+            const b = y.history_avg_price !== null ? 1 : 0
+            if (a !== b) return b - a
+            return x.task_name.localeCompare(y.task_name)
+          })"
+          :key="item.task_id ?? item.task_name"
+          class="xy-card cursor-pointer p-3 transition-shadow hover:shadow-xy-hover"
+          :class="item.filename ? '' : 'opacity-60'"
+          @click="openTask(item)"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <p class="line-clamp-1 text-[13px] font-bold text-foreground" :title="item.task_name">
+                {{ item.task_name }}
+              </p>
+              <p class="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+                <Tag class="h-3 w-3" />
+                <span class="truncate">{{ item.keyword }}</span>
+              </p>
             </div>
-            <PriceTrendChart class="mt-3" :points="item.history_daily_trend" />
+            <div class="text-right">
+              <p class="text-base font-black tabular text-foreground">
+                {{ item.history_avg_price !== null ? `¥${item.history_avg_price}` : '—' }}
+              </p>
+              <p v-if="item.history_sample_count" class="text-[10px] text-slate-400 tabular">
+                {{ t('dashboard.priceOverview.sampleLabel', { count: item.history_sample_count }) }}
+              </p>
+            </div>
+          </div>
+          <div class="mt-2 flex justify-end">
+            <ArrowRight class="h-3.5 w-3.5 text-slate-400" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   </div>
 </template>
+
+
+
+

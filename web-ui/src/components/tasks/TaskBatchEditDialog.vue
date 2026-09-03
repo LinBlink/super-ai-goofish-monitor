@@ -126,12 +126,12 @@ const subtitle = computed(() => {
   if (props.selectedNames.length <= 3) {
     return t('tasks.batchEdit.subtitleWithNames', {
       count: props.count,
-      names: props.selectedNames.join('、'),
+      names: props.selectedNames.join(','),
     })
   }
   return t('tasks.batchEdit.subtitleWithNamesTruncated', {
     count: props.count,
-    names: props.selectedNames.slice(0, 3).join('、'),
+    names: props.selectedNames.slice(0, 3).join(','),
     extra: props.selectedNames.length - 3,
   })
 })
@@ -146,7 +146,7 @@ const subtitle = computed(() => {
       </DialogHeader>
 
       <div class="space-y-4 py-2">
-        <!-- 通知推送 -->
+        <!-- 通知推�?-->
         <div class="rounded-lg border border-slate-200/70 bg-white/60 p-3">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-start gap-2">
@@ -215,7 +215,7 @@ const subtitle = computed(() => {
           </div>
         </div>
 
-        <!-- 新发布范围 -->
+        <!-- 新发布范�?-->
         <div class="rounded-lg border border-slate-200/70 bg-white/60 p-3">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-start gap-2">
@@ -255,3 +255,7 @@ const subtitle = computed(() => {
     </DialogContent>
   </Dialog>
 </template>
+
+
+
+

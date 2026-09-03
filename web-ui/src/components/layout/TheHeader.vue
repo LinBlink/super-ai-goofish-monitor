@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button } from '@/components/ui/button'
 import DashboardTaskSearch from '@/components/layout/DashboardTaskSearch.vue'
 import LocaleToggle from '@/components/layout/LocaleToggle.vue'
 import LightningFishIcon from '@/components/icons/LightningFishIcon.vue'
-import { 
-  Bell, 
-  Search, 
-  UserCircle,
-  HelpCircle,
-  Menu
-} from 'lucide-vue-next'
+import { Bell, Search, UserCircle, Menu } from 'lucide-vue-next'
 import { useMobileNav } from '@/composables/useMobileNav'
+import { useIsMobile } from '@/composables/useMediaQuery'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const route = useRoute()
 const { toggleMobileNav } = useMobileNav()
+const isMobile = useIsMobile()
 const inactiveSearchValue = ref('')
 const { t } = useI18n()
 
@@ -26,105 +21,91 @@ const isDashboard = computed(() => route.name === 'Dashboard')
 function goAccounts() {
   router.push('/accounts')
 }
-
 function goNotifications() {
   router.push({ name: 'Settings', query: { tab: 'notifications' } })
-}
-
-function goPrompts() {
-  router.push({ name: 'Settings', query: { tab: 'prompts' } })
 }
 </script>
 
 <template>
-  <header class="relative flex items-center justify-between px-6 h-16 bg-white/70 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-[100]">
-    <div class="absolute inset-x-0 top-0 h-1 brand-gradient"></div>
-    <!-- Brand Logo -->
+  <header
+    class="sticky top-0 z-40 flex h-12 items-center gap-2 border-b border-border bg-white/95 px-3 backdrop-blur md:h-14 md:px-5"
+  >
+    <!-- 移动端：菜单 + 品牌 + 占位（搜索移到主区） -->
+    <button
+      v-if="isMobile"
+      type="button"
+      class="-ml-1 flex h-9 w-9 items-center justify-center rounded-full text-slate-700 active:bg-muted"
+      :aria-label="t('header.openNavigation')"
+      @click="toggleMobileNav"
+    >
+      <Menu class="h-5 w-5" />
+    </button>
+
     <RouterLink
       to="/dashboard"
-      class="flex items-center gap-2 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-w-0"
+      class="flex items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       :aria-label="t('header.goHome')"
     >
-      <div class="brand-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-lg shadow-primary/30 transition-transform group-hover:rotate-12">
-        <LightningFishIcon :size="28" className="drop-shadow-sm" />
-      </div>
-      <h1 class="text-base sm:text-lg font-black tracking-tighter text-slate-800 whitespace-nowrap leading-tight bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 bg-clip-text text-transparent">
+      <span
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg md:h-9 md:w-9 md:rounded-xl"
+        style="background-color: hsl(56 100% 52%)"
+      >
+        <LightningFishIcon :size="18" class="md:hidden" />
+        <LightningFishIcon :size="22" class="hidden md:block" />
+      </span>
+      <h1
+        class="text-[15px] font-black tracking-tight text-foreground md:text-base"
+      >
         {{ t('header.brandName') }}
       </h1>
     </RouterLink>
 
-    <!-- Search & Navigation -->
-    <div class="hidden md:flex flex-grow max-w-md mx-8">
+    <!-- 桌面：搜�?-->
+    <div class="ml-2 hidden flex-1 md:flex md:max-w-md">
       <DashboardTaskSearch v-if="isDashboard" />
-      <div v-else class="relative w-full group">
-        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors" />
-        <input 
-          type="text" 
+      <div v-else class="relative w-full">
+        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
           v-model="inactiveSearchValue"
+          type="text"
           readonly
           aria-disabled="true"
           :placeholder="t('header.searchUnavailable')"
-          class="w-full h-10 pl-10 pr-4 bg-slate-100/50 border border-slate-200/50 rounded-xl text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary/50"
+          class="h-9 w-full rounded-full border border-border bg-muted pl-9 pr-4 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white"
         />
-        <kbd class="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-slate-300 bg-white text-[10px] text-slate-400 font-sans shadow-sm pointer-events-none">
-          /
-        </kbd>
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2">
-        <LocaleToggle />
-      </div>
-
-      <div class="flex items-center gap-1 sm:gap-2">
-         <Button
-           variant="ghost"
-           size="icon"
-           class="rounded-full text-slate-500 hover:text-primary hover:bg-primary/10"
-           :aria-label="t('header.openNotifications')"
-           @click="goNotifications"
-         >
-            <Bell class="w-5 h-5" />
-         </Button>
-         <Button
-           variant="ghost"
-           size="icon"
-           class="rounded-full text-slate-500 hover:text-primary hover:bg-primary/10"
-           :aria-label="t('header.openPrompts')"
-           @click="goPrompts"
-         >
-            <HelpCircle class="w-5 h-5" />
-         </Button>
-      </div>
-      
-      <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-
-      <Button 
-        variant="ghost" 
-        class="hidden sm:flex items-center gap-2 pl-2 pr-4 rounded-full hover:bg-slate-100 transition-all active:scale-95"
+    <div class="ml-auto flex items-center gap-1.5 md:gap-2">
+      <LocaleToggle />
+      <button
+        type="button"
+        class="hidden h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-muted sm:flex"
+        :aria-label="t('header.openNotifications')"
+        @click="goNotifications"
+      >
+        <Bell class="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        class="flex h-9 items-center gap-1.5 rounded-full px-1.5 text-slate-600 hover:bg-muted"
         :aria-label="t('header.openAccounts')"
         @click="goAccounts"
       >
-        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-slate-300 shadow-sm">
-           <UserCircle class="w-6 h-6 text-slate-500" />
-        </div>
-        <div class="text-left hidden lg:block">
-           <p class="text-xs font-black text-slate-700 leading-none mb-0.5">Xianyu Admin</p>
-           <p class="text-[10px] text-slate-400 font-medium">{{ t('header.accountManagement') }}</p>
-        </div>
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        class="md:hidden"
-        :aria-label="t('header.openNavigation')"
-        @click="toggleMobileNav"
-      >
-         <Menu class="w-6 h-6 text-slate-700" />
-      </Button>
+        <span class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-muted">
+          <UserCircle class="h-6 w-6 text-slate-500" />
+        </span>
+        <span class="hidden text-left lg:block">
+          <span class="block text-[11px] font-bold leading-none text-slate-700">Xianyu Admin</span>
+          <span class="mt-0.5 block text-[10px] font-medium leading-none text-slate-400">
+            {{ t('header.accountManagement') }}
+          </span>
+        </span>
+      </button>
     </div>
   </header>
 </template>
+
+
+
+

@@ -123,8 +123,11 @@ watch(pollingError, (value) => {
 
 <template>
   <Dialog v-model:open="isFormOpen">
-    <DialogTrigger as-child>
+    <DialogTrigger v-if="!$slots.trigger" as-child>
       <Button>{{ t('tasks.createDialog.trigger') }}</Button>
+    </DialogTrigger>
+    <DialogTrigger v-else as-child>
+      <slot name="trigger" />
     </DialogTrigger>
     <DialogContent class="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
       <DialogHeader>
@@ -149,3 +152,8 @@ watch(pollingError, (value) => {
     :job="activeJob"
   />
 </template>
+
+
+
+
+

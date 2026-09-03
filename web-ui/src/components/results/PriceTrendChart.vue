@@ -23,8 +23,8 @@ const isMinOnly = computed(() => props.mode === 'min-only')
 
 const chartWidth = 720
 const chartHeight = 240
-// 水平留白仅用于曲线横向定位；纵向另外拆分出顶部/底部的专用留白，
-// 避免最高价/最低价标记的文字跟坐标轴日期、网格线挤在一起。
+// 水平留白仅用于曲线横向定位；纵向另外拆分出顶�?底部的专用留白，
+// 避免最高价/最低价标记的文字跟坐标轴日期、网格线挤在一起�?
 const paddingX = 24
 const plotTop = 34
 const axisLabelHeight = 20
@@ -73,7 +73,7 @@ function resolveY(value: number) {
   return plotBottom - ratio * usableHeight
 }
 
-// 极值标记的文字锚点：首尾两个点靠边，居中锚点会让文字伸出画布，改成贴边对齐。
+// 极值标记的文字锚点：首尾两个点靠边，居中锚点会让文字伸出画布，改成贴边对齐�?
 function labelAnchor(index: number) {
   if (validPoints.value.length <= 1) return 'middle'
   if (index === 0) return 'start'
@@ -106,7 +106,7 @@ const avgPath = computed(() =>
 const medianPath = computed(() =>
   isMinOnly.value ? '' : buildPath(validPoints.value.map((point) => point.median_price)),
 )
-// 每日最低价：当天 AI 推荐商品中价格最低的那一件，用于观察"底价"走势。
+// 每日最低价：当�?AI 推荐商品中价格最低的那一件，用于观察"底价"走势�?
 const minPath = computed(() =>
   buildPath(validPoints.value.map((point) => (typeof point.min_price === 'number' ? point.min_price : null))),
 )
@@ -122,7 +122,7 @@ interface ExtremePoint {
   point: TrendPoint
 }
 
-// 极值标记基准曲线：min-only 模式下使用 min_price 曲线，否则用 avg_price 曲线。
+// 极值标记基准曲线：min-only 模式下使�?min_price 曲线，否则用 avg_price 曲线�?
 function extremeValue(point: TrendPoint): number | null {
   if (isMinOnly.value) {
     return typeof point.min_price === 'number' ? point.min_price : null
@@ -130,7 +130,7 @@ function extremeValue(point: TrendPoint): number | null {
   return typeof point.avg_price === 'number' ? point.avg_price : null
 }
 
-// 最高价/最低价标记：在基准曲线上标出极值点。
+// 最高价/最低价标记：在基准曲线上标出极值点�?
 const highPoint = computed<ExtremePoint | null>(() => {
   const points = validPoints.value
   let best: ExtremePoint | null = null
@@ -253,7 +253,7 @@ function extremePrice(point: TrendPoint): number | null {
           </text>
         </g>
 
-        <!-- 最高价：预留出独立的顶部留白（plotTop），标记文字固定画在曲线区域上方，不会压到网格线或图例。 -->
+        <!-- 最高价：预留出独立的顶部留白（plotTop），标记文字固定画在曲线区域上方，不会压到网格线或图例�?-->
         <g v-if="highPoint">
           <circle
             :cx="resolveX(highPoint.index)"
@@ -275,7 +275,7 @@ function extremePrice(point: TrendPoint): number | null {
           </text>
         </g>
 
-        <!-- 最低价：同理，独立的底部留白（extremeLabelGap）把标记文字和下方的日期坐标轴隔开。 -->
+        <!-- 最低价：同理，独立的底部留白（extremeLabelGap）把标记文字和下方的日期坐标轴隔开�?-->
         <g v-if="lowPoint && lowPoint.index !== highPoint?.index">
           <circle
             :cx="resolveX(lowPoint.index)"
@@ -300,3 +300,8 @@ function extremePrice(point: TrendPoint): number | null {
     </div>
   </div>
 </template>
+
+
+
+
+

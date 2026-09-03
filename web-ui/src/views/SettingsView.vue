@@ -19,7 +19,6 @@ import RotationSettingsPanel from '@/components/settings/RotationSettingsPanel.v
 import BrowserSettingsPanel from '@/components/settings/BrowserSettingsPanel.vue'
 import SchedulerSettingsPanel from '@/components/settings/SchedulerSettingsPanel.vue'
 import GlobalBlacklistPanel from '@/components/settings/GlobalBlacklistPanel.vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import { Settings2 } from 'lucide-vue-next'
 const { t } = useI18n()
 
@@ -243,23 +242,34 @@ watch(selectedPrompt, async (value) => {
 </script>
 
 <template>
-  <div>
-    <PageHeader :title="t('settings.title')" :description="t('settings.description')" :icon="Settings2" />
-    
-    <div v-if="error" class="app-alert-error mb-4" role="alert">
+  <div class="space-y-3">
+    <header class="xy-card-flat flex items-center gap-2 p-2.5">
+      <span
+        class="flex h-7 w-7 items-center justify-center rounded-xl"
+        style="background-color: hsl(56 100% 52%)"
+      >
+        <Settings2 class="h-4 w-4 text-slate-900" />
+      </span>
+      <div class="min-w-0">
+        <h1 class="truncate text-base font-black text-foreground">{{ t('settings.title') }}</h1>
+        <p class="hidden truncate text-[11px] text-slate-500 sm:block">{{ t('settings.description') }}</p>
+      </div>
+    </header>
+
+    <div v-if="error" class="xy-card-flat border-rose-200 bg-rose-50/40 p-3 text-sm text-rose-700">
       {{ error.message }}
     </div>
 
     <Tabs v-model="activeTab" class="w-full">
-      <TabsList class="mb-4 flex w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
-        <TabsTrigger class="shrink-0" value="ai">{{ t('settings.tabs.ai') }}</TabsTrigger>
-      <TabsTrigger class="shrink-0" value="rotation">{{ t('settings.tabs.rotation') }}</TabsTrigger>
-      <TabsTrigger class="shrink-0" value="browser">{{ t('settings.tabs.browser') }}</TabsTrigger>
-      <TabsTrigger class="shrink-0" value="scheduler">{{ t('scheduler.tab') }}</TabsTrigger>
-      <TabsTrigger class="shrink-0" value="blacklist">{{ t('settings.tabs.blacklist') }}</TabsTrigger>
-        <TabsTrigger class="shrink-0" value="notifications">{{ t('settings.tabs.notifications') }}</TabsTrigger>
-        <TabsTrigger class="shrink-0" value="status">{{ t('settings.tabs.status') }}</TabsTrigger>
-        <TabsTrigger class="shrink-0" value="prompts">{{ t('settings.tabs.prompts') }}</TabsTrigger>
+      <TabsList class="mb-3 flex w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-full bg-muted p-1">
+        <TabsTrigger class="shrink-0 rounded-full" value="ai">{{ t('settings.tabs.ai') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="rotation">{{ t('settings.tabs.rotation') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="browser">{{ t('settings.tabs.browser') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="scheduler">{{ t('scheduler.tab') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="blacklist">{{ t('settings.tabs.blacklist') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="notifications">{{ t('settings.tabs.notifications') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="status">{{ t('settings.tabs.status') }}</TabsTrigger>
+        <TabsTrigger class="shrink-0 rounded-full" value="prompts">{{ t('settings.tabs.prompts') }}</TabsTrigger>
       </TabsList>
 
       <!-- AI Tab -->
@@ -506,3 +516,8 @@ watch(selectedPrompt, async (value) => {
     </Tabs>
   </div>
 </template>
+
+
+
+
+

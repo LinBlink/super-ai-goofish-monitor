@@ -2,81 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Goofish-inspired design tokens
+   - Brand yellow #ffe60f for primary / active
+   - Op blue #3178f6 for primary actions
+   - Cool gray bg #f5f7f9
+   - Tight radius scale (12/16/20)
+   - 14px body / 11-17px content
+   ============================================================ */
+
 @layer base {
   :root {
-    --background: 250 60% 99%;
-    --foreground: 224 71% 12%;
+    /* HSL tokens (Tailwind opacity modifiers require <alpha-value>) */
+    --background: 210 17% 96%;
+    --foreground: 0 0% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 71% 12%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 12%;
+    --popover-foreground: 0 0% 12%;
 
-    --primary: 250 84% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 56 100% 52%;          /* #ffe60f */
+    --primary-foreground: 0 0% 12%;
 
-    --secondary: 250 40% 96%;
-    --secondary-foreground: 250 60% 25%;
+    --secondary: 210 17% 96%;
+    --secondary-foreground: 0 0% 12%;
 
-    --muted: 250 30% 96%;
-    --muted-foreground: 220 14% 46%;
+    --muted: 210 17% 96%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 250 60% 96%;
-    --accent-foreground: 250 60% 25%;
+    --accent: 56 100% 92%;           /* #fff7c2 */
+    --accent-foreground: 0 0% 12%;
 
-    --success: 152 60% 40%;
+    --op: 217 91% 58%;               /* #3178f6 */
+    --op-foreground: 0 0% 100%;
+
+    --success: 161 84% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 26 83% 20%;
-    --info: 199 89% 48%;
+
+    --warning: 33 100% 50%;
+    --warning-foreground: 0 0% 12%;
+
+    --info: 217 91% 58%;
     --info-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --price: 11 100% 57%;            /* #ff4f24 */
+    --price-foreground: 0 0% 100%;
+
+    --highlight: 30 91% 48%;         /* #f58300 */
+
+    --destructive: 355 100% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 90%;
-    --input: 220 20% 90%;
-    --ring: 250 84% 60%;
+    --border: 0 0% 92%;              /* #ececec */
+    --input: 0 0% 92%;
+    --ring: 56 100% 52%;
 
-    --radius: 1rem;
-  }
-
-  .dark {
-    --background: 224 71% 8%;
-    --foreground: 220 20% 96%;
-
-    --card: 224 50% 12%;
-    --card-foreground: 220 20% 96%;
-
-    --popover: 224 50% 12%;
-    --popover-foreground: 220 20% 96%;
-
-    --primary: 250 84% 66%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 223 30% 18%;
-    --secondary-foreground: 220 20% 96%;
-
-    --muted: 223 30% 18%;
-    --muted-foreground: 220 14% 65%;
-
-    --accent: 223 30% 18%;
-    --accent-foreground: 220 20% 96%;
-
-    --success: 152 55% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 55%;
-    --warning-foreground: 26 83% 12%;
-    --info: 199 89% 55%;
-    --info-foreground: 0 0% 100%;
-
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 223 30% 20%;
-    --input: 223 30% 20%;
-    --ring: 250 84% 66%;
+    --radius: 16px;
   }
 }
 
@@ -87,62 +70,95 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    line-height: 1.5;
   }
 
   body {
-    @apply min-h-screen bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell,
+      "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji", BlinkMacSystemFont, "Helvetica Neue",
+      Arial, "PingFang SC", "PingFang TC", "PingFang HK", "Microsoft Yahei",
+      "Microsoft JhengHei";
+    font-size: 14px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    min-height: 100%;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
   }
 }
 
 @layer components {
-  .glass {
-    @apply border border-white/40 bg-white/75 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/65;
+  /* 闲鱼风卡�?*/
+  .xy-card {
+    @apply rounded-2xl border border-border bg-card text-card-foreground shadow-sm;
+  }
+  .xy-card-flat {
+    @apply rounded-2xl border border-border bg-card text-card-foreground;
   }
 
-  .app-surface {
-    @apply rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/70;
+  .xy-chip {
+    @apply inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground;
+  }
+  .xy-chip-yellow {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-slate-900;
+    background-color: hsl(var(--primary));
+  }
+  .xy-chip-op {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white;
+    background-color: hsl(var(--op));
   }
 
-  .app-surface-subtle {
-    @apply rounded-xl border border-slate-200/60 bg-white/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-950/50;
+  /* 闲鱼风按钮：胶囊圆角、高�?36-40px */
+  .xy-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+    min-height: 36px;
+  }
+  .xy-btn-primary {
+    @apply xy-btn text-slate-900;
+    background-color: hsl(var(--primary));
+  }
+  .xy-btn-primary:hover {
+    background-color: hsl(56 100% 64%);
+  }
+  .xy-btn-op {
+    @apply xy-btn text-white;
+    background-color: hsl(var(--op));
+  }
+  .xy-btn-op:hover {
+    background-color: hsl(217 91% 50%);
+  }
+.xy-btn-ghost {
+    @apply xy-btn bg-muted text-foreground hover:bg-muted;
+  }
+  .xy-btn-outline {
+    @apply xy-btn border border-border bg-card text-foreground hover:bg-muted;
+  }
+  .xy-btn-danger {
+    @apply xy-btn text-white;
+    background-color: hsl(var(--destructive));
   }
 
-  .app-alert-error {
-    @apply rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700;
+  /* 价格 / 数字 */
+  .xy-price {
+    @apply font-bold tabular leading-none;
+    color: hsl(var(--price));
+  }
+  .xy-price-sign {
+    @apply text-sm font-semibold tabular;
+    color: hsl(var(--price));
   }
 
-  /* 醒目友好的卡片：柔和阴影 + 悬停轻微上浮 */
-  .app-card {
-    @apply rounded-2xl border border-slate-200/70 bg-white/80 shadow-lg shadow-slate-200/40 backdrop-blur-sm transition-all duration-300;
-  }
-
-  .app-card:hover {
-    @apply -translate-y-0.5 shadow-xl shadow-slate-300/50;
-  }
-
-  .brand-gradient {
-    @apply bg-gradient-to-r from-primary via-violet-500 to-sky-500;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary via-violet-500 to-sky-500 bg-clip-text text-transparent;
-  }
-
-  /* 页面图标芯片 */
-  .page-icon {
-    @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-violet-500/15 text-primary shadow-inner;
-  }
-
-  .app-chip {
-    @apply inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600;
-  }
-
-  .empty-state {
-    @apply flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-12 text-center;
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
@@ -150,20 +166,21 @@
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-muted-foreground/20 transition-colors hover:bg-muted-foreground/40;
+  background-color: rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.32);
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-
   *,
   *::before,
   *::after {
@@ -172,3 +189,7 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+
+

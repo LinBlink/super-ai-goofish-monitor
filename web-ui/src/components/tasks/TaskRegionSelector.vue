@@ -52,7 +52,7 @@ function normalizePath(value: string | null | undefined): string {
 }
 
 function isFullOption(value: string): boolean {
-  return value.startsWith('全') || value === '全国'
+  return value.startsWith('__none__') || value === '全国'
 }
 
 function syncFromModel() {
@@ -170,3 +170,8 @@ watch(() => props.modelValue, syncFromModel, { immediate: true })
     </div>
   </div>
 </template>
+
+
+
+
+

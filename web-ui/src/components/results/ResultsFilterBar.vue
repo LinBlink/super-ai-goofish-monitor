@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { RefreshCw, Download, Trash2 } from 'lucide-vue-next'
 
 interface FileOption {
   value: string
@@ -36,12 +36,8 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 
 const options = computed(() => {
-  if (!props.isReady) {
-    return []
-  }
-  if (props.fileOptions && props.fileOptions.length > 0) {
-    return props.fileOptions
-  }
+  if (!props.isReady) return []
+  if (props.fileOptions && props.fileOptions.length > 0) return props.fileOptions
   return props.files.map((file) => ({ value: file, label: file }))
 })
 
@@ -51,15 +47,6 @@ const selectedLabel = computed(() => {
   if (!props.selectedFile) return t('results.filters.chooseResult')
   const match = options.value.find((option) => option.value === props.selectedFile)
   return match ? match.label : t('results.filters.taskNameLabel', { task: t('common.unnamed') })
-})
-
-const labelClass = computed(() => {
-  const classes = ['transition-opacity', 'duration-200']
-  if (!props.isReady || !props.selectedFile || options.value.length === 0) {
-    classes.push('text-muted-foreground')
-  }
-  classes.push(props.isReady ? 'opacity-100' : 'opacity-70')
-  return classes.join(' ')
 })
 
 const isSelectDisabled = computed(() => !props.isReady || options.value.length === 0)
@@ -90,30 +77,28 @@ function isDateActive(value: number | null) {
 
 function handleToggleAiRecommended(value: boolean) {
   emit('update:aiRecommendedOnly', value)
-  if (value) {
-    emit('update:keywordRecommendedOnly', false)
-  }
+  if (value) emit('update:keywordRecommendedOnly', false)
 }
-
 function handleToggleKeywordRecommended(value: boolean) {
   emit('update:keywordRecommendedOnly', value)
-  if (value) {
-    emit('update:aiRecommendedOnly', false)
-  }
+  if (value) emit('update:aiRecommendedOnly', false)
 }
 </script>
 
 <template>
-  <div class="app-surface mb-6 p-4 sm:p-5">
-    <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-      <div class="space-y-2">
-        <Label class="text-xs font-semibold text-slate-500">{{ t('results.title') }}</Label>
+  <section class="xy-card-flat space-y-3 p-3">
+    <!-- �?1：任务选择 / 排序 / 顺序 -->
+    <div class="grid gap-2 md:grid-cols-3">
+      <div class="space-y-1">
+        <Label class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          {{ t('results.title') }}
+        </Label>
         <Select
           :model-value="props.selectedFile || undefined"
           @update:model-value="(value) => emit('update:selectedFile', value as string)"
         >
-          <SelectTrigger class="w-full" :disabled="isSelectDisabled">
-            <span :class="labelClass">
+          <SelectTrigger class="h-9 w-full text-xs" :disabled="isSelectDisabled">
+            <span :class="!props.isReady || !props.selectedFile ? 'text-muted-foreground' : ''">
               {{ selectedLabel }}
             </span>
           </SelectTrigger>
@@ -124,14 +109,15 @@ function handleToggleKeywordRecommended(value: boolean) {
           </SelectContent>
         </Select>
       </div>
-
-      <div class="space-y-2">
-        <Label class="text-xs font-semibold text-slate-500">{{ t('results.filters.sortByLabel') }}</Label>
+      <div class="space-y-1">
+        <Label class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          {{ t('results.filters.sortByLabel') }}
+        </Label>
         <Select
           :model-value="props.sortBy"
           @update:model-value="(value) => emit('update:sortBy', value as any)"
         >
-          <SelectTrigger class="w-full">
+          <SelectTrigger class="h-9 w-full text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -143,14 +129,15 @@ function handleToggleKeywordRecommended(value: boolean) {
           </SelectContent>
         </Select>
       </div>
-
-      <div class="space-y-2" v-if="props.sortBy !== 'smart'">
-        <Label class="text-xs font-semibold text-slate-500">{{ t('results.filters.asc') }} / {{ t('results.filters.desc') }}</Label>
+      <div v-if="props.sortBy !== 'smart'" class="space-y-1">
+        <Label class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          {{ t('results.filters.asc') }} / {{ t('results.filters.desc') }}
+        </Label>
         <Select
           :model-value="props.sortOrder"
           @update:model-value="(value) => emit('update:sortOrder', value as any)"
         >
-          <SelectTrigger class="w-full">
+          <SelectTrigger class="h-9 w-full text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -161,72 +148,88 @@ function handleToggleKeywordRecommended(value: boolean) {
       </div>
     </div>
 
-    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-      <Label class="text-xs font-semibold text-slate-500">{{ t('results.filters.dateRange') }}</Label>
-      <div class="flex flex-wrap items-center gap-1.5">
-        <Button
-          v-for="range in dateRanges"
-          :key="String(range.value)"
-          :variant="isDateActive(range.value) ? 'gradient' : 'outline'"
-          :size="'sm'"
-          @click="emit('update:recentDays', range.value)"
-        >
-          {{ range.label }}
-        </Button>
-      </div>
+    <!-- �?2：日期范围胶�?-->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <Label class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        {{ t('results.filters.dateRange') }}
+      </Label>
+      <button
+        v-for="range in dateRanges"
+        :key="String(range.value)"
+        type="button"
+        class="rounded-full px-3 text-[12px] transition-colors"
+        :class="
+          isDateActive(range.value)
+            ? 'text-slate-900'
+            : 'bg-muted text-slate-600 hover:bg-muted/80'
+        "
+        :style="isDateActive(range.value) ? 'background-color: hsl(56 100% 52%)' : ''"
+        @click="emit('update:recentDays', range.value)"
+      >
+        {{ range.label }}
+      </button>
     </div>
 
-    <div class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div class="flex items-center space-x-2">
+    <!-- �?3：过滤器 / 操作 -->
+    <div class="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="flex cursor-pointer items-center gap-1.5 text-[12px]">
           <Checkbox
             id="ai-recommended-only"
             :model-value="props.aiRecommendedOnly"
             @update:modelValue="(value) => handleToggleAiRecommended(value === true)"
           />
-          <Label for="ai-recommended-only" class="cursor-pointer">{{ t('results.filters.aiOnly') }}</Label>
-        </div>
-
-        <div class="flex items-center space-x-2">
+          <span>{{ t('results.filters.aiOnly') }}</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-1.5 text-[12px]">
           <Checkbox
             id="keyword-recommended-only"
             :model-value="props.keywordRecommendedOnly"
             @update:modelValue="(value) => handleToggleKeywordRecommended(value === true)"
           />
-          <Label for="keyword-recommended-only" class="cursor-pointer">{{ t('results.filters.keywordOnly') }}</Label>
-        </div>
-
-        <div class="flex items-center space-x-2">
+          <span>{{ t('results.filters.keywordOnly') }}</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-1.5 text-[12px]">
           <Checkbox
             id="include-hidden"
             :model-value="props.includeHidden"
             @update:modelValue="(value) => emit('update:includeHidden', value === true)"
           />
-          <Label for="include-hidden" class="cursor-pointer">{{ t('results.filters.includeHidden') }}</Label>
-        </div>
+          <span>{{ t('results.filters.includeHidden') }}</span>
+        </label>
       </div>
 
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
-        <Button @click="emit('refresh')" :disabled="props.isLoading">
+      <div class="flex flex-wrap items-center gap-1.5 lg:ml-auto">
+        <button type="button" class="xy-btn-outline h-8 text-[12px]" :disabled="props.isLoading" @click="emit('refresh')">
+          <RefreshCw class="h-3 w-3" />
           {{ t('common.refresh') }}
-        </Button>
-
-        <Button
-          variant="outline"
+        </button>
+        <button
+          type="button"
+          class="xy-btn-outline h-8 text-[12px]"
+          :disabled="props.isLoading || !props.selectedFile"
           @click="emit('export')"
-          :disabled="props.isLoading || !props.selectedFile"
         >
+          <Download class="h-3 w-3" />
           {{ t('results.filters.exportCsv') }}
-        </Button>
-
-        <Button
-          variant="destructive"
-          @click="emit('delete')"
+        </button>
+        <button
+          type="button"
+          class="xy-btn-danger h-8 text-[12px]"
           :disabled="props.isLoading || !props.selectedFile"
+          @click="emit('delete')"
         >
+          <Trash2 class="h-3 w-3" />
           {{ t('results.filters.deleteResult') }}
-        </Button>
+        </button>
       </div>
     </div>
-  </div>
+  </section>
 </template>
+
+
+
+
+
+
+

@@ -10,3 +10,8 @@ const props = defineProps<SelectItemTextProps>()
     <slot />
   </SelectItemText>
 </template>
+
+
+
+
+

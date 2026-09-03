@@ -12,82 +12,94 @@ module.exports = {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: "1rem",
       screens: {
         "2xl": "1400px",
       },
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        // HSL slots kept for shadcn primitives that reference them
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
         },
-        // 自定义 AI 风格色
-        ai: {
-          primary: "#3b82f6",
-          success: "#10b981",
-          warning: "#f59e0b",
-          danger: "#ef4444",
-          dark: "#0f172a",
-        }
+        // Goofish palette (utility helpers)
+        brand: {
+          yellow: "#ffe60f",
+          "yellow-hover": "#ffef68",
+          op: "#3178f6",
+          "op-hover": "#2566dc",
+          price: "#ff4f24",
+          highlight: "#f58300",
+          danger: "#ff3141",
+          success: "#14c38e",
+          page: "#f5f7f9",
+          line: "#ececec",
+          placeholder: "#eaeaea",
+          ink: "#1f1f1f",
+          muted: "#666666",
+          subtle: "#999999",
+        },
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-        'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        xy: "0 4px 14px 0 rgba(0, 0, 0, 0.06)",
+        "xy-hover": "0 8px 24px 0 rgba(0, 0, 0, 0.10)",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "20px",
+        md: "16px",
+        sm: "12px",
+        pill: "999px",
+      },
+      fontSize: {
+        // Compact scale aligned with Goofish mobile UI
+        xs: ["11px", { lineHeight: "14px" }],
+        sm: ["13px", { lineHeight: "18px" }],
+        base: ["14px", { lineHeight: "20px" }],
+        md: ["15px", { lineHeight: "22px" }],
+        lg: ["17px", { lineHeight: "24px" }],
+        xl: ["19px", { lineHeight: "26px" }],
+        "2xl": ["22px", { lineHeight: "28px" }],
+        "3xl": ["26px", { lineHeight: "32px" }],
       },
       keyframes: {
-        "accordion-down": {
-          from: { height: 0 },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
-        },
         "fade-in": {
-          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "0%": { opacity: 0, transform: "translateY(6px)" },
           "100%": { opacity: 1, transform: "translateY(0)" },
-        }
+        },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.4s ease-out forwards",
+        "fade-in": "fade-in 0.3s ease-out forwards",
       },
     },
   },

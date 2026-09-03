@@ -11,11 +11,9 @@ import TaskQueuePanel from '@/components/tasks/TaskQueuePanel.vue'
 import TaskForm from '@/components/tasks/TaskForm.vue'
 import TaskBatchEditDialog from '@/components/tasks/TaskBatchEditDialog.vue'
 import { listAccounts, type AccountItem } from '@/api/accounts'
-import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toast'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import { Play, Square, ListTodo, Settings2 } from 'lucide-vue-next'
+import { Play, Square, ListTodo, Settings2, Plus } from 'lucide-vue-next'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-const { t } = useI18n()
 
 const {
   tasks,
@@ -47,8 +44,8 @@ const {
   stoppingTaskIds,
 } = useTasks()
 const route = useRoute()
+const { t } = useI18n()
 
-// State for dialogs
 const isEditDialogOpen = ref(false)
 const isCriteriaDialogOpen = ref(false)
 const isEditSubmitting = ref(false)
@@ -60,7 +57,6 @@ const isDeleteDialogOpen = ref(false)
 const taskToDeleteId = ref<number | null>(null)
 const accountOptions = ref<AccountItem[]>([])
 const isBatchEditOpen = ref(false)
-const isBatchSubmitting = ref(false)
 
 const taskToDelete = computed(() => {
   if (taskToDeleteId.value === null) return null
@@ -87,76 +83,17 @@ const selectedNames = computed(() => {
     .filter((task) => task.id !== undefined && selectedTaskIds.value.has(task.id))
     .map((task) => task.task_name)
 })
-
 const headerSelectionLabel = computed(() => {
   const n = selectedTaskIds.value.size
-  if (n === 0) return t('tasks.batchEdit.trigger')
-  return t('tasks.batchEdit.triggerWithCount', { count: n })
+  return n === 0
+    ? t('tasks.batchEdit.trigger')
+    : t('tasks.batchEdit.triggerWithCount', { count: n })
 })
-
-function handleToggleSelect(taskId: number, selected: boolean) {
-  toggleTaskSelection(taskId, selected)
-}
-
-function handleToggleSelectAll(checked: boolean) {
-  if (checked) {
-    selectAllTasks([...allVisibleTaskIds.value])
-  } else {
-    clearTaskSelection()
-  }
-}
-
-async function handleBatchSubmit(updates: {
-  notify_enabled?: boolean | null
-  max_pages?: number | null
-  new_publish_option?: string | null
-}) {
-  isBatchSubmitting.value = true
-  try {
-    const ids = [...selectedTaskIds.value]
-    const result = await batchUpdateTasks(ids, updates)
-    isBatchEditOpen.value = false
-    clearTaskSelection()
-    if (result.failed.length === 0) {
-      toast({ title: t('tasks.batchEdit.success', { count: result.succeeded.length }) })
-    } else if (result.succeeded.length === 0) {
-      toast({
-        title: t('tasks.batchEdit.allFailed'),
-        description: result.failed
-          .slice(0, 3)
-          .map((f) => `#${f.task_id}: ${f.reason}`)
-          .join('；'),
-        variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: t('tasks.batchEdit.partialSuccess', {
-          ok: result.succeeded.length,
-          fail: result.failed.length,
-        }),
-        description: result.failed
-          .slice(0, 3)
-          .map((f) => `#${f.task_id}: ${f.reason}`)
-          .join('；'),
-        variant: 'destructive',
-      })
-    }
-  } catch (e) {
-    toast({
-      title: t('tasks.batchEdit.failed'),
-      description: (e as Error).message,
-      variant: 'destructive',
-    })
-  } finally {
-    isBatchSubmitting.value = false
-  }
-}
 
 function handleDeleteTask(taskId: number) {
   taskToDeleteId.value = taskId
   isDeleteDialogOpen.value = true
 }
-
 async function handleConfirmDeleteTask() {
   if (!taskToDelete.value) {
     toast({ title: t('tasks.toasts.notFound'), variant: 'destructive' })
@@ -177,7 +114,6 @@ async function handleConfirmDeleteTask() {
     taskToDeleteId.value = null
   }
 }
-
 function handleEditTask(task: Task) {
   selectedTask.value = task
   isEditDialogOpen.value = true
@@ -186,14 +122,14 @@ function handleEditTask(task: Task) {
 watch(
   () => [route.query.edit, tasks.value],
   () => {
-    const editTaskId = typeof route.query.edit === 'string' ? Number(route.query.edit) : NaN
-    if (!Number.isFinite(editTaskId)) return
-    const match = tasks.value.find((task) => task.id === editTaskId)
+    const editId = typeof route.query.edit === 'string' ? Number(route.query.edit) : NaN
+    if (!Number.isFinite(editId)) return
+    const match = tasks.value.find((task) => task.id === editId)
     if (!match) return
     selectedTask.value = match
     isEditDialogOpen.value = true
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 async function handleUpdateTask(data: TaskUpdate) {
@@ -202,15 +138,13 @@ async function handleUpdateTask(data: TaskUpdate) {
   try {
     await updateTask(selectedTask.value.id, data)
     isEditDialogOpen.value = false
-  }
-  catch (e) {
+  } catch (e) {
     toast({
       title: t('tasks.toasts.updateFailed'),
       description: (e as Error).message,
       variant: 'destructive',
     })
-  }
-  finally {
+  } finally {
     isEditSubmitting.value = false
   }
 }
@@ -220,7 +154,6 @@ function handleOpenCriteriaDialog(task: Task) {
   criteriaDescription.value = task.description || ''
   isCriteriaDialogOpen.value = true
 }
-
 async function handleRefreshCriteria() {
   if (!criteriaTask.value) return
   if (!criteriaDescription.value.trim()) {
@@ -231,7 +164,6 @@ async function handleRefreshCriteria() {
     })
     return
   }
-
   isCriteriaSubmitting.value = true
   try {
     await updateTask(criteriaTask.value.id, { description: criteriaDescription.value })
@@ -258,7 +190,6 @@ async function handleStartTask(taskId: number) {
     })
   }
 }
-
 async function handleStopTask(taskId: number) {
   try {
     await stopTask(taskId)
@@ -270,7 +201,6 @@ async function handleStopTask(taskId: number) {
     })
   }
 }
-
 async function handleToggleEnabled(task: Task, enabled: boolean) {
   const previous = task.enabled
   task.enabled = enabled
@@ -285,7 +215,6 @@ async function handleToggleEnabled(task: Task, enabled: boolean) {
     })
   }
 }
-
 async function handleStartAll() {
   try {
     await startAll()
@@ -298,7 +227,6 @@ async function handleStartAll() {
     })
   }
 }
-
 async function handleStopAll() {
   try {
     await stopAll()
@@ -306,6 +234,55 @@ async function handleStopAll() {
   } catch (e) {
     toast({
       title: t('tasks.toasts.stopFailed'),
+      description: (e as Error).message,
+      variant: 'destructive',
+    })
+  }
+}
+
+function handleToggleSelect(taskId: number, selected: boolean) {
+  toggleTaskSelection(taskId, selected)
+}
+function handleToggleSelectAll(checked: boolean) {
+  if (checked) selectAllTasks([...allVisibleTaskIds.value])
+  else clearTaskSelection()
+}
+
+async function handleBatchSubmit(updates: {
+  notify_enabled?: boolean | null
+  max_pages?: number | null
+  new_publish_option?: string | null
+}) {
+  try {
+    const ids = [...selectedTaskIds.value]
+    const result = await batchUpdateTasks(ids, updates)
+    isBatchEditOpen.value = false
+    clearTaskSelection()
+    const failedSummary = result.failed
+      .slice(0, 3)
+      .map((f) => `#${f.task_id}: ${f.reason}`)
+      .join(' / ')
+    if (result.failed.length === 0) {
+      toast({ title: t('tasks.batchEdit.success', { count: result.succeeded.length }) })
+    } else if (result.succeeded.length === 0) {
+      toast({
+        title: t('tasks.batchEdit.allFailed'),
+        description: failedSummary,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: t('tasks.batchEdit.partialSuccess', {
+          ok: result.succeeded.length,
+          fail: result.failed.length,
+        }),
+        description: failedSummary,
+        variant: 'destructive',
+      })
+    }
+  } catch (e) {
+    toast({
+      title: t('tasks.batchEdit.failed'),
       description: (e as Error).message,
       variant: 'destructive',
     })
@@ -323,50 +300,67 @@ async function fetchAccountOptions() {
     })
   }
 }
-
 onMounted(fetchAccountOptions)
 </script>
 
 <template>
-  <div>
-    <PageHeader :title="t('tasks.title')" :icon="ListTodo">
-      <template #actions>
-        <Button
-          variant="outline"
-          :disabled="isLoading || selectedTaskIds.size === 0"
-          :title="headerSelectionLabel"
+  <div class="space-y-3">
+    <!-- 操作栏 -->
+    <header class="xy-card-flat flex flex-wrap items-center gap-2 p-2.5">
+      <div class="flex min-w-0 items-center gap-2">
+        <span
+          class="flex h-7 w-7 items-center justify-center rounded-xl text-slate-700"
+          style="background-color: hsl(56 100% 52%)"
+        >
+          <ListTodo class="h-4 w-4" />
+        </span>
+        <h1 class="truncate text-base font-black text-foreground">{{ t('tasks.title') }}</h1>
+        <span class="xy-chip">{{ tasks.length }}</span>
+      </div>
+
+      <div class="ml-auto flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          class="xy-btn-outline h-9 text-[13px]"
+          :disabled="selectedTaskIds.size === 0"
           @click="isBatchEditOpen = true"
         >
-          <Settings2 class="mr-1 h-4 w-4" />
+          <Settings2 class="h-3.5 w-3.5" />
           {{ headerSelectionLabel }}
-        </Button>
-        <Button
-          variant="outline"
-          :disabled="isLoading || hasRunnableTasks === false"
-          :title="t('tasks.startAll')"
+        </button>
+        <button
+          type="button"
+          class="xy-btn-outline h-9 text-[13px]"
+          :disabled="!hasRunnableTasks"
           @click="handleStartAll"
         >
-          <Play class="mr-1 h-4 w-4" />
+          <Play class="h-3.5 w-3.5" />
           {{ t('tasks.startAll') }}
-        </Button>
-        <Button
-          variant="outline"
-          :disabled="isLoading || hasActiveTasks === false"
-          :title="t('tasks.stopAll')"
+        </button>
+        <button
+          type="button"
+          class="xy-btn-outline h-9 text-[13px]"
+          :disabled="!hasActiveTasks"
           @click="handleStopAll"
         >
-          <Square class="mr-1 h-4 w-4" />
+          <Square class="h-3.5 w-3.5" />
           {{ t('tasks.stopAll') }}
-        </Button>
-        <TaskCreateDialog :account-options="accountOptions" @created="fetchTasks" />
-      </template>
-    </PageHeader>
+        </button>
+        <TaskCreateDialog :account-options="accountOptions" @created="fetchTasks">
+          <template #trigger>
+            <button type="button" class="xy-btn-primary h-9 text-[13px]">
+              <Plus class="h-3.5 w-3.5" />
+              {{ t('tasks.createDialog.trigger') }}
+            </button>
+          </template>
+        </TaskCreateDialog>
+      </div>
+    </header>
 
-    <!-- Edit Task Dialog -->
     <Dialog v-model:open="isEditDialogOpen">
-      <DialogContent class="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
+      <DialogContent class="max-h-[88vh] max-w-[640px] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{{ t('tasks.editDialog.title', { task: selectedTask?.task_name || "" }) }}</DialogTitle>
+          <DialogTitle>{{ t('tasks.editDialog.title', { task: selectedTask?.task_name || '' }) }}</DialogTitle>
         </DialogHeader>
         <TaskForm
           v-if="selectedTask"
@@ -377,51 +371,48 @@ onMounted(fetchAccountOptions)
           @submit="(data) => handleUpdateTask(data as TaskUpdate)"
         />
         <DialogFooter>
-          <Button type="submit" form="task-form" :disabled="isEditSubmitting">
+          <button
+            type="submit"
+            form="task-form"
+            class="xy-btn-primary"
+            :disabled="isEditSubmitting"
+          >
             {{ isEditSubmitting ? t('common.saving') : t('tasks.editDialog.save') }}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
-    <!-- Refresh Criteria Dialog -->
     <Dialog v-model:open="isCriteriaDialogOpen">
-      <DialogContent class="sm:max-w-[600px]">
+      <DialogContent class="max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{{ t('tasks.criteria.title') }}</DialogTitle>
-          <DialogDescription>
-            {{ t('tasks.criteria.description') }}
-          </DialogDescription>
+          <DialogDescription>{{ t('tasks.criteria.description') }}</DialogDescription>
         </DialogHeader>
-        <div class="grid gap-3">
-          <label class="text-sm font-medium text-gray-700">{{ t('tasks.form.description') }}</label>
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-slate-700">{{ t('tasks.form.description') }}</label>
           <Textarea
             v-model="criteriaDescription"
-            class="min-h-[140px]"
+            class="min-h-[120px]"
             :placeholder="t('tasks.form.descriptionPlaceholder')"
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" @click="isCriteriaDialogOpen = false">
+          <button type="button" class="xy-btn-outline" @click="isCriteriaDialogOpen = false">
             {{ t('common.cancel') }}
-          </Button>
-          <Button :disabled="isCriteriaSubmitting" @click="handleRefreshCriteria">
+          </button>
+          <button type="button" class="xy-btn-op" :disabled="isCriteriaSubmitting" @click="handleRefreshCriteria">
             {{ isCriteriaSubmitting ? t('tasks.criteria.generating') : t('tasks.criteria.action') }}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
-    <div v-if="error" class="app-alert-error mb-4" role="alert">
-      <strong class="font-bold">{{ t('common.error') }}</strong>
-      <span class="block sm:inline">{{ error.message }}</span>
+    <div v-if="error" class="xy-card-flat border-rose-200 bg-rose-50/40 p-3 text-sm text-rose-700">
+      {{ error.message }}
     </div>
 
-    <TaskQueuePanel
-      :queue="queue"
-      :tasks="tasks"
-      @stop-task="handleStopTask"
-    />
+    <TaskQueuePanel :queue="queue" :tasks="tasks" @stop-task="handleStopTask" />
 
     <TasksTable
       :tasks="tasks"
@@ -447,16 +438,22 @@ onMounted(fetchAccountOptions)
     />
 
     <Dialog v-model:open="isDeleteDialogOpen">
-      <DialogContent class="sm:max-w-[420px]">
+      <DialogContent class="max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{{ t('tasks.deleteDialog.title') }}</DialogTitle>
           <DialogDescription>
-            {{ taskToDelete ? t('tasks.deleteDialog.descriptionWithTask', { task: taskToDelete.task_name }) : t('tasks.deleteDialog.descriptionFallback') }}
+            {{ taskToDelete
+              ? t('tasks.deleteDialog.descriptionWithTask', { task: taskToDelete.task_name })
+              : t('tasks.deleteDialog.descriptionFallback') }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</Button>
-          <Button variant="destructive" @click="handleConfirmDeleteTask">{{ t('tasks.deleteDialog.confirm') }}</Button>
+          <button type="button" class="xy-btn-outline" @click="isDeleteDialogOpen = false">
+            {{ t('common.cancel') }}
+          </button>
+          <button type="button" class="xy-btn-danger" @click="handleConfirmDeleteTask">
+            {{ t('tasks.deleteDialog.confirm') }}
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
