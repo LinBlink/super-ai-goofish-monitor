@@ -9,12 +9,13 @@ import TaskCreateDialog from '@/components/tasks/TaskCreateDialog.vue'
 import TasksTable from '@/components/tasks/TasksTable.vue'
 import TaskQueuePanel from '@/components/tasks/TaskQueuePanel.vue'
 import TaskForm from '@/components/tasks/TaskForm.vue'
+import TaskBatchEditDialog from '@/components/tasks/TaskBatchEditDialog.vue'
 import { listAccounts, type AccountItem } from '@/api/accounts'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toast'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { Play, Square, ListTodo } from 'lucide-vue-next'
+import { Play, Square, ListTodo, Settings2 } from 'lucide-vue-next'
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,12 @@ const {
   stopTask,
   startAll,
   stopAll,
+  batchUpdateTasks,
+  selectedTaskIds,
+  allVisibleTaskIds,
+  toggleTaskSelection,
+  selectAllTasks,
+  clearTaskSelection,
   stoppingTaskIds,
 } = useTasks()
 const route = useRoute()
@@ -52,6 +59,8 @@ const isCriteriaSubmitting = ref(false)
 const isDeleteDialogOpen = ref(false)
 const taskToDeleteId = ref<number | null>(null)
 const accountOptions = ref<AccountItem[]>([])
+const isBatchEditOpen = ref(false)
+const isBatchSubmitting = ref(false)
 
 const taskToDelete = computed(() => {
   if (taskToDeleteId.value === null) return null
@@ -71,6 +80,77 @@ const hasRunnableTasks = computed(() =>
 const hasActiveTasks = computed(
   () => (queue.value.running?.length ?? 0) > 0 || (queue.value.queued?.length ?? 0) > 0,
 )
+
+const selectedNames = computed(() => {
+  if (selectedTaskIds.value.size === 0) return []
+  return tasks.value
+    .filter((task) => task.id !== undefined && selectedTaskIds.value.has(task.id))
+    .map((task) => task.task_name)
+})
+
+const headerSelectionLabel = computed(() => {
+  const n = selectedTaskIds.value.size
+  if (n === 0) return t('tasks.batchEdit.trigger')
+  return t('tasks.batchEdit.triggerWithCount', { count: n })
+})
+
+function handleToggleSelect(taskId: number, selected: boolean) {
+  toggleTaskSelection(taskId, selected)
+}
+
+function handleToggleSelectAll(checked: boolean) {
+  if (checked) {
+    selectAllTasks([...allVisibleTaskIds.value])
+  } else {
+    clearTaskSelection()
+  }
+}
+
+async function handleBatchSubmit(updates: {
+  notify_enabled?: boolean | null
+  max_pages?: number | null
+  new_publish_option?: string | null
+}) {
+  isBatchSubmitting.value = true
+  try {
+    const ids = [...selectedTaskIds.value]
+    const result = await batchUpdateTasks(ids, updates)
+    isBatchEditOpen.value = false
+    clearTaskSelection()
+    if (result.failed.length === 0) {
+      toast({ title: t('tasks.batchEdit.success', { count: result.succeeded.length }) })
+    } else if (result.succeeded.length === 0) {
+      toast({
+        title: t('tasks.batchEdit.allFailed'),
+        description: result.failed
+          .slice(0, 3)
+          .map((f) => `#${f.task_id}: ${f.reason}`)
+          .join('；'),
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: t('tasks.batchEdit.partialSuccess', {
+          ok: result.succeeded.length,
+          fail: result.failed.length,
+        }),
+        description: result.failed
+          .slice(0, 3)
+          .map((f) => `#${f.task_id}: ${f.reason}`)
+          .join('；'),
+        variant: 'destructive',
+      })
+    }
+  } catch (e) {
+    toast({
+      title: t('tasks.batchEdit.failed'),
+      description: (e as Error).message,
+      variant: 'destructive',
+    })
+  } finally {
+    isBatchSubmitting.value = false
+  }
+}
 
 function handleDeleteTask(taskId: number) {
   taskToDeleteId.value = taskId
@@ -253,6 +333,15 @@ onMounted(fetchAccountOptions)
       <template #actions>
         <Button
           variant="outline"
+          :disabled="isLoading || selectedTaskIds.size === 0"
+          :title="headerSelectionLabel"
+          @click="isBatchEditOpen = true"
+        >
+          <Settings2 class="mr-1 h-4 w-4" />
+          {{ headerSelectionLabel }}
+        </Button>
+        <Button
+          variant="outline"
           :disabled="isLoading || hasRunnableTasks === false"
           :title="t('tasks.startAll')"
           @click="handleStartAll"
@@ -339,12 +428,22 @@ onMounted(fetchAccountOptions)
       :is-loading="isLoading"
       :stopping-ids="stoppingTaskIds"
       :queue="queue"
+      :selected-ids="selectedTaskIds"
       @delete-task="handleDeleteTask"
       @edit-task="handleEditTask"
       @run-task="handleStartTask"
       @stop-task="handleStopTask"
       @refresh-criteria="handleOpenCriteriaDialog"
       @toggle-enabled="handleToggleEnabled"
+      @toggle-select="handleToggleSelect"
+      @toggle-select-all="handleToggleSelectAll"
+    />
+
+    <TaskBatchEditDialog
+      v-model:open="isBatchEditOpen"
+      :count="selectedTaskIds.size"
+      :selected-names="selectedNames"
+      @submit="handleBatchSubmit"
     />
 
     <Dialog v-model:open="isDeleteDialogOpen">

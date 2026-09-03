@@ -21,7 +21,13 @@ from src.services.task_generation_runner import (
     run_ai_generation_job,
 )
 from src.services.task_payloads import serialize_task, serialize_tasks
-from src.domain.models.task import TaskCreate, TaskUpdate, TaskGenerateRequest
+from src.domain.models.task import (
+    TaskBatchUpdate,
+    TaskBatchUpdateRequest,
+    TaskCreate,
+    TaskGenerateRequest,
+    TaskUpdate,
+)
 from src.prompt_utils import generate_criteria
 from src.utils import resolve_task_log_path
 from src.services.account_strategy_service import normalize_account_strategy
@@ -172,6 +178,49 @@ async def get_task_generation_job(
     if not job:
         raise HTTPException(status_code=404, detail="任务生成作业未找到")
     return {"job": job.model_dump(mode="json")}
+@router.post("/batch-update", response_model=dict)
+async def batch_update_tasks(
+    payload: TaskBatchUpdateRequest,
+    service: TaskService = Depends(get_task_service),
+    scheduler_service: SchedulerService = Depends(get_scheduler_service),
+):
+    """批量修改任务的指定字段（仅支持通知推送 / 搜索页数 / 新发布范围）。"""
+    raw_ids = payload.task_ids
+    update_payload = payload.updates.model_dump(exclude_unset=True)
+    if not update_payload:
+        raise HTTPException(status_code=400, detail="至少需要指定一个修改字段。")
+
+    succeeded: List[int] = []
+    failed: List[dict] = []
+    seen: set[int] = set()
+    for tid in raw_ids:
+        if tid in seen:
+            continue
+        seen.add(tid)
+        try:
+            existing = await service.get_task(tid)
+            if not existing:
+                failed.append({"task_id": tid, "reason": "任务不存在"})
+                continue
+            task_update = TaskUpdate(**update_payload)
+            await service.update_task(tid, task_update)
+            succeeded.append(tid)
+        except Exception as e:
+            failed.append({"task_id": tid, "reason": str(e)})
+
+    if succeeded:
+        await _reload_scheduler_if_needed(service, scheduler_service)
+        await websocket.broadcast_message(
+            "tasks_updated", {"task_ids": succeeded}
+        )
+
+    return {
+        "message": f"已批量修改 {len(succeeded)} 个任务，{len(failed)} 个失败",
+        "succeeded": succeeded,
+        "failed": failed,
+    }
+
+
 @router.patch("/{task_id}", response_model=dict)
 async def update_task(
     task_id: int,

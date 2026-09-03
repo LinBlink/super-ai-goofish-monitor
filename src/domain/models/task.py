@@ -329,6 +329,72 @@ class TaskUpdate(BaseModel):
         return self
 
 
+_BATCH_ALLOWED_FIELDS = frozenset({"notify_enabled", "max_pages", "new_publish_option"})
+
+
+class TaskBatchUpdateRequest(BaseModel):
+    """批量更新任务的请求 DTO。"""
+
+    model_config = ConfigDict(extra="ignore")
+
+    task_ids: List[int]
+    updates: "TaskBatchUpdate"
+
+    @field_validator("task_ids")
+    @classmethod
+    def validate_task_ids(cls, value: List[int]) -> List[int]:
+        if not value:
+            raise ValueError("task_ids 不能为空。")
+        if not all(isinstance(i, int) and i > 0 for i in value):
+            raise ValueError("task_ids 必须全部为正整数。")
+        return value
+
+
+class TaskBatchUpdate(BaseModel):
+    """批量更新任务的 DTO：仅允许批量修改的字段（通知推送 / 搜索页数 / 新发布范围）。"""
+
+    model_config = ConfigDict(extra="ignore")
+
+    notify_enabled: Optional[bool] = None
+    max_pages: Optional[int] = None
+    new_publish_option: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_disallowed_fields(cls, values):
+        if isinstance(values, dict):
+            extras = set(values.keys()) - _BATCH_ALLOWED_FIELDS
+            if extras:
+                raise ValueError(
+                    f"批量修改仅支持以下字段：{sorted(_BATCH_ALLOWED_FIELDS)}；非法字段：{sorted(extras)}"
+                )
+        return values
+
+    @model_validator(mode="after")
+    def at_least_one_field(self):
+        if (
+            self.notify_enabled is None
+            and self.max_pages is None
+            and self.new_publish_option is None
+        ):
+            raise ValueError("至少需要指定一个批量修改字段（notify_enabled / max_pages / new_publish_option）。")
+        return self
+
+    @field_validator("max_pages")
+    @classmethod
+    def validate_max_pages(cls, value):
+        if value is None:
+            return value
+        if value < 1 or value > 50:
+            raise ValueError("搜索页数必须在 1-50 之间。")
+        return value
+
+    @field_validator("new_publish_option", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, value):
+        return _normalize_optional_string(value)
+
+
 class TaskGenerateRequest(BaseModel):
     """任务创建请求DTO（AI模式支持自动生成标准）"""
 

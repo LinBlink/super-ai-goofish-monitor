@@ -64,6 +64,29 @@ export interface TaskCreateResponse {
 // For PATCH requests, all fields are optional
 export type TaskUpdate = Partial<Omit<Task, 'id' | 'next_run_at'>>;
 
+// 批量修改：仅支持 通知推送 / 搜索页数 / 新发布范围
+export interface TaskBatchUpdate {
+  notify_enabled?: boolean | null
+  max_pages?: number | null
+  new_publish_option?: string | null
+}
+
+export interface TaskBatchUpdateRequest {
+  task_ids: number[]
+  updates: TaskBatchUpdate
+}
+
+export interface TaskBatchUpdateFailure {
+  task_id: number
+  reason: string
+}
+
+export interface TaskBatchUpdateResponse {
+  message: string
+  succeeded: number[]
+  failed: TaskBatchUpdateFailure[]
+}
+
 // For task creation
 export interface TaskGenerateRequest {
   task_name: string;

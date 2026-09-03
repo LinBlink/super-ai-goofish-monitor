@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Task, TaskQueueState } from '@/types/task.d.ts'
 import {
@@ -13,20 +13,21 @@ import {
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Play, 
-  Square, 
-  Pencil, 
-  Trash2, 
-  User, 
-  BrainCircuit, 
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Play,
+  Square,
+  Pencil,
+  Trash2,
+  User,
+  BrainCircuit,
   Keyboard,
   Clock,
   Layers,
   MapPin,
   RefreshCcw,
   Search,
-  ListOrdered
+  ListOrdered,
 } from 'lucide-vue-next'
 import { formatCountdown, formatNextRunAbsolute } from '@/lib/taskSchedule'
 
@@ -37,6 +38,7 @@ interface Props {
   isLoading: boolean
   stoppingIds?: Set<number>
   queue?: TaskQueueState
+  selectedIds?: Set<number>
 }
 
 const props = defineProps<Props>()
@@ -107,7 +109,33 @@ const emit = defineEmits<{
   (e: 'edit-task', task: Task): void
   (e: 'refresh-criteria', task: Task): void
   (e: 'toggle-enabled', task: Task, enabled: boolean): void
+  (e: 'toggle-select', taskId: number, selected: boolean): void
+  (e: 'toggle-select-all', selected: boolean): void
 }>()
+
+const selectableTaskIds = computed(() =>
+  props.tasks
+    .map((t) => t.id)
+    .filter((id): id is number => typeof id === 'number'),
+)
+const selectedSet = computed(() => props.selectedIds ?? new Set<number>())
+const allSelected = computed(
+  () =>
+    selectableTaskIds.value.length > 0 &&
+    selectableTaskIds.value.every((id) => selectedSet.value.has(id)),
+)
+const someSelected = computed(
+  () =>
+    !allSelected.value &&
+    selectableTaskIds.value.some((id) => selectedSet.value.has(id)),
+)
+
+function onHeaderToggle(checked: boolean) {
+  emit('toggle-select-all', checked)
+}
+function onRowToggle(taskId: number, checked: boolean) {
+  emit('toggle-select', taskId, checked)
+}
 </script>
 
 <template>
@@ -134,6 +162,11 @@ const emit = defineEmits<{
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 space-y-2">
               <div class="flex flex-wrap items-center gap-2">
+                <Checkbox
+                  :model-value="task.id !== undefined && selectedSet.has(task.id)"
+                  :aria-label="t('tasks.batchSelect.toggleRow', { name: task.task_name })"
+                  @update:model-value="(val) => task.id !== undefined && onRowToggle(task.id, val as boolean)"
+                />
                 <h3 class="truncate text-base font-black tracking-tight text-slate-900">
                   {{ task.task_name }}
                 </h3>
@@ -321,6 +354,14 @@ const emit = defineEmits<{
       <Table>
         <TableHeader class="bg-slate-50/50 border-b border-slate-100">
           <TableRow>
+            <TableHead class="w-[44px] px-4 text-center">
+              <Checkbox
+                :model-value="allSelected"
+                :indeterminate="someSelected"
+                :aria-label="t('tasks.batchSelect.toggleAll')"
+                @update:model-value="(val) => onHeaderToggle(val as boolean)"
+              />
+            </TableHead>
             <TableHead class="w-[80px] px-6 text-slate-500 font-bold uppercase text-[10px] tracking-wider text-center">{{ t('tasks.table.headers.status') }}</TableHead>
             <TableHead class="min-w-[300px] text-slate-500 font-bold uppercase text-[10px] tracking-wider text-left">{{ t('tasks.table.headers.details') }}</TableHead>
             <TableHead class="w-[180px] text-slate-500 font-bold uppercase text-[10px] tracking-wider text-left">{{ t('tasks.table.headers.crawl') }}</TableHead>
@@ -332,7 +373,7 @@ const emit = defineEmits<{
         <TableBody>
           <template v-if="isLoading && tasks.length === 0">
             <TableRow>
-              <TableCell :colspan="6" class="h-32 text-center">
+              <TableCell :colspan="7" class="h-32 text-center">
                 <div class="flex flex-col items-center justify-center gap-2 text-slate-400">
                   <RefreshCcw class="w-6 h-6 animate-spin" />
                   <span class="text-sm font-medium italic">{{ t('tasks.table.syncing') }}</span>
@@ -342,7 +383,7 @@ const emit = defineEmits<{
           </template>
           <template v-else-if="tasks.length === 0">
             <TableRow>
-              <TableCell :colspan="6" class="h-40 text-center">
+              <TableCell :colspan="7" class="h-40 text-center">
                 <div class="flex flex-col items-center justify-center gap-2 text-slate-300">
                   <Layers class="w-12 h-12 opacity-20" />
                   <p class="text-sm font-bold">{{ t('tasks.table.empty') }}</p>
@@ -356,7 +397,16 @@ const emit = defineEmits<{
               :key="task.id"
               class="group hover:bg-white/80 transition-all duration-300 border-b border-slate-100/50 last:border-0"
             >
-            <!-- Column 1: Status -->
+            <!-- Column 1: Select -->
+            <TableCell class="px-4 align-middle text-center">
+              <Checkbox
+                :model-value="task.id !== undefined && selectedSet.has(task.id)"
+                :aria-label="t('tasks.batchSelect.toggleRow', { name: task.task_name })"
+                @update:model-value="(val) => task.id !== undefined && onRowToggle(task.id, val as boolean)"
+              />
+            </TableCell>
+
+            <!-- Column 2: Status -->
             <TableCell class="px-6 align-middle">
               <div class="flex flex-col items-center gap-2.5">
                 <Switch

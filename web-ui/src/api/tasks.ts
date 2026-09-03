@@ -1,5 +1,7 @@
 import type {
   Task,
+  TaskBatchUpdateRequest,
+  TaskBatchUpdateResponse,
   TaskCreateResponse,
   TaskGenerateRequest,
   TaskGenerationJob,
@@ -60,4 +62,16 @@ export async function startAllTasks(): Promise<{ enqueued: number; skipped: numb
 
 export async function stopAllTasks(): Promise<void> {
   await http('/api/tasks/stop-all', { method: 'POST' })
+}
+
+export async function batchUpdateTasks(
+  payload: TaskBatchUpdateRequest,
+): Promise<TaskBatchUpdateResponse> {
+  return await http('/api/tasks/batch-update', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
 }

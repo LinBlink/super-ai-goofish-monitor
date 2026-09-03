@@ -1,6 +1,8 @@
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type {
   Task,
+  TaskBatchUpdate,
+  TaskBatchUpdateResponse,
   TaskCreateResponse,
   TaskGenerateRequest,
   TaskUpdate,
@@ -15,6 +17,7 @@ export function useTasks() {
   const error = ref<Error | null>(null)
   const stoppingTaskIds = ref<Set<number>>(new Set())
   const queue = ref<TaskQueueState>({ running: [], queued: [] })
+  const selectedTaskIds = ref<Set<number>>(new Set())
   const { on } = useWebSocket()
 
   async function fetchTasks(options?: { silent?: boolean }) {
@@ -54,6 +57,52 @@ export function useTasks() {
     const index = queue.value.queued.indexOf(taskId)
     return index === -1 ? -1 : index + 1
   }
+
+  // 批量选择：把 Set 包成新引用以触发 Vue 响应式
+  function toggleTaskSelection(taskId: number, selected: boolean) {
+    const next = new Set(selectedTaskIds.value)
+    if (selected) next.add(taskId)
+    else next.delete(taskId)
+    selectedTaskIds.value = next
+  }
+
+  function selectAllTasks(ids: number[]) {
+    selectedTaskIds.value = new Set(ids)
+  }
+
+  function clearTaskSelection() {
+    if (selectedTaskIds.value.size === 0) return
+    selectedTaskIds.value = new Set()
+  }
+
+  // 任务列表变更（删除 / 重命名）后清理失效的选中项
+  function pruneSelection() {
+    if (selectedTaskIds.value.size === 0) return
+    const valid = new Set(tasks.value.map((t) => t.id).filter((id): id is number => typeof id === 'number'))
+    const next = new Set<number>()
+    for (const id of selectedTaskIds.value) {
+      if (valid.has(id)) next.add(id)
+    }
+    selectedTaskIds.value = next
+  }
+
+  const allVisibleTaskIds = computed(() =>
+    tasks.value
+      .map((t) => t.id)
+      .filter((id): id is number => typeof id === 'number'),
+  )
+
+  const isAllSelected = computed(
+    () =>
+      allVisibleTaskIds.value.length > 0 &&
+      allVisibleTaskIds.value.every((id) => selectedTaskIds.value.has(id)),
+  )
+
+  const isSomeSelected = computed(
+    () =>
+      !isAllSelected.value &&
+      allVisibleTaskIds.value.some((id) => selectedTaskIds.value.has(id)),
+  )
 
   // Real-time updates
   on('tasks_updated', () => {
@@ -190,6 +239,22 @@ export function useTasks() {
       throw e
     }
   }
+
+  async function batchUpdateTasks(
+    taskIds: number[],
+    updates: TaskBatchUpdate,
+  ): Promise<TaskBatchUpdateResponse> {
+    error.value = null
+    try {
+      const result = await taskApi.batchUpdateTasks({ task_ids: taskIds, updates })
+      await fetchTasks({ silent: true })
+      pruneSelection()
+      return result
+    } catch (e) {
+      if (e instanceof Error) error.value = e
+      throw e
+    }
+  }
   
   // Load tasks when the composable is first used in a component
   onMounted(() => {
@@ -202,6 +267,10 @@ export function useTasks() {
     isLoading,
     error,
     queue,
+    selectedTaskIds,
+    allVisibleTaskIds,
+    isAllSelected,
+    isSomeSelected,
     fetchTasks,
     fetchQueue,
     resolveExecutionStatus,
@@ -213,6 +282,10 @@ export function useTasks() {
     stopTask,
     startAll,
     stopAll,
+    batchUpdateTasks,
+    toggleTaskSelection,
+    selectAllTasks,
+    clearTaskSelection,
     stoppingTaskIds,
   }
 }
