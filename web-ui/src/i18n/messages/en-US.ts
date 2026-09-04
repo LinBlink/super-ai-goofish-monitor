@@ -122,7 +122,7 @@ const enUS = {
     },
     deals: {
       title: 'Persistent Drops — Buy-the-Dip Tasks',
-      description: 'Per-task view: tasks whose AI-recommended daily minimum price kept falling. Ranked by total decline. Click the highlighted item to open the listing.',
+      description: 'Per-task view: tasks whose AI-recommended daily minimum price trends downward overall, allowing brief rebounds. Ranked by total decline.',
       empty: 'No persistent drops yet. Keep monitoring to surface dip opportunities.',
       openItem: 'Open',
       declinePercent: '{percent}% drop',

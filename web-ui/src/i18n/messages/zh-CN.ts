@@ -122,7 +122,7 @@ const zhCN = {
     },
     deals: {
       title: '持续下跌可抄底',
-      description: '任务维度：AI 推荐商品「每日最低价」连续下跌的任务，按累计跌幅倒序排列，点击下方商品直达闲鱼链接。',
+      description: '任务维度：AI 推荐商品「每日最低价」曲线总体持续走低的任务，允许短暂反弹，按累计跌幅倒序排列。',
       empty: '暂无持续下跌的任务，需要更多监控数据才会出现抄底机会。',
       openItem: '打开',
       declinePercent: '累计下跌 {percent}%',

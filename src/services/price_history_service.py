@@ -461,6 +461,37 @@ def _has_any_drop(prices: list[float]) -> bool:
     return any(prices[index] > prices[index + 1] for index in range(len(prices) - 1))
 
 
+def _is_overall_declining(min_series: list[dict]) -> bool:
+    """用按日线性回归判断每日最低价曲线是否总体向下。
+
+    允许中途短暂反弹，但要求回归斜率为负，且最新价低于首日价格，
+    避免单个异常高点把横盘或总体上涨的曲线误判为下降。
+    """
+    if len(min_series) < 2:
+        return False
+    try:
+        first_day = date.fromisoformat(str(min_series[0]["day"]))
+        x_values = [
+            (date.fromisoformat(str(point["day"])) - first_day).days
+            for point in min_series
+        ]
+        y_values = [float(point["min_price"]) for point in min_series]
+    except (KeyError, TypeError, ValueError):
+        return False
+    if len(set(x_values)) < 2 or y_values[-1] >= y_values[0]:
+        return False
+    x_mean = sum(x_values) / len(x_values)
+    y_mean = sum(y_values) / len(y_values)
+    denominator = sum((value - x_mean) ** 2 for value in x_values)
+    if denominator <= 0:
+        return False
+    slope = sum(
+        (x_value - x_mean) * (y_value - y_mean)
+        for x_value, y_value in zip(x_values, y_values)
+    ) / denominator
+    return slope < 0
+
+
 def _days_between(start_day: str, end_day: str) -> int:
     """两个 YYYY-MM-DD 日期之间相差的天数（end - start）。"""
     try:
@@ -508,7 +539,7 @@ def find_declining_dip_tasks(
     - keyword_to_ai_ids 提供每个关键词下 AI 推荐商品的 item_id 集合。
     - 在 window_days 窗口内的「每日最低价（仅统计 AI 推荐商品）」序列：
       * 至少 min_tail_points 个有效数据点；
-      * 末尾 min_tail_points 个点呈「不递增 + 至少一次严格下跌」；
+      * 整个窗口按日期做线性回归后斜率为负，且最新价低于首日价格；
       * 较窗口内的「每日最低价」最大值累计下跌 ≥ min_decline_percent；
       * 跌幅期跨度（日历天数：最高价日 → 最新日）≥ min_decline_days，
         避免「单日峰值后回落」这种伪下跌被误判为持续下跌。
@@ -535,12 +566,8 @@ def find_declining_dip_tasks(
         ]
         if len(min_series) < min_tail_points:
             continue
-        tail = [point["min_price"] for point in min_series[-min_tail_points:]]
-        # 用「不递增」判定：允许持平（视为持续下跌的一部分），但不允许上涨。
-        if not _is_non_increasing(tail):
-            continue
-        # 同时要求尾部里至少出现一次严格下跌，避免「跌完横盘」被误判为持续下跌。
-        if not _has_any_drop(tail):
+        # 以整个窗口的回归趋势判断，允许中途短暂反弹，但总体必须持续走低。
+        if not _is_overall_declining(min_series):
             continue
         highest_min = max(point["min_price"] for point in min_series)
         latest_min = min_series[-1]["min_price"]

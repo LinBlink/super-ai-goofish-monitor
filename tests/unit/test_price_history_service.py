@@ -1,9 +1,34 @@
 from src.services.price_history_service import (
+    _is_overall_declining,
     build_item_price_context,
     build_price_history_insights,
     load_price_snapshots,
     record_market_snapshots,
 )
+
+
+def test_overall_declining_allows_short_rebounds():
+    series = [
+        {"day": "2026-08-30", "min_price": 534},
+        {"day": "2026-08-31", "min_price": 534},
+        {"day": "2026-09-01", "min_price": 497},
+        {"day": "2026-09-02", "min_price": 488},
+        {"day": "2026-09-03", "min_price": 498},
+        {"day": "2026-09-04", "min_price": 499},
+    ]
+
+    assert _is_overall_declining(series) is True
+
+
+def test_overall_declining_rejects_rising_curve_with_temporary_drop():
+    series = [
+        {"day": "2026-09-01", "min_price": 400},
+        {"day": "2026-09-02", "min_price": 430},
+        {"day": "2026-09-03", "min_price": 420},
+        {"day": "2026-09-04", "min_price": 450},
+    ]
+
+    assert _is_overall_declining(series) is False
 
 
 def test_record_market_snapshots_and_build_price_history_insights(tmp_path, monkeypatch):
