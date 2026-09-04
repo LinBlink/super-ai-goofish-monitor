@@ -4,13 +4,25 @@ services:
     container_name: ai-goofish-monitor-app
     init: true
     ports:
-      - "8000:8000"
+      - "${SERVER_PORT:-8000}:8000"
     env_file:
       - .env
+    environment:
+      APP_DATABASE_FILE: /app/data/app.sqlite3
+      SERVER_PORT: 8000
+      RUNNING_IN_DOCKER: "true"
+      RUN_HEADLESS: "true"
+      USE_SYSTEM_CHROME: "false"
+      LOGIN_IS_EDGE: "false"
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - .:/app
       - /app/dist
     restart: unless-stopped
+    stop_grace_period: 30s
+    shm_size: "1gb"
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 30s

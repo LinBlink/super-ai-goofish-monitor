@@ -29,6 +29,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     RUNNING_IN_DOCKER=true \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    SERVER_PORT=8000 \
     TZ=Asia/Shanghai
 
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}

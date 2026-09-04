@@ -10,7 +10,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     RUNNING_IN_DOCKER=true \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    SERVER_PORT=8000 \
     TZ=Asia/Shanghai
+
+ARG APP_UID=1000
+ARG APP_GID=1000
 
 COPY requirements-runtime.txt /tmp/requirements-runtime.txt
 
@@ -28,6 +32,9 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/requirements-runtime.txt
 
-RUN mkdir -p /app/data /app/state /app/logs /app/images /app/jsonl /app/price_history
+RUN groupadd --gid "$APP_GID" appuser \
+    && useradd --uid "$APP_UID" --gid appuser --create-home --shell /usr/sbin/nologin appuser \
+    && mkdir -p /app/data /app/state /app/logs /app/images /app/jsonl /app/price_history \
+    && chown -R appuser:appuser /app "$VIRTUAL_ENV" "$PLAYWRIGHT_BROWSERS_PATH"
 
 ENTRYPOINT ["tini", "--"]

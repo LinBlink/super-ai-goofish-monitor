@@ -26,6 +26,13 @@ COPY prompts /app/prompts
 COPY static /app/static
 COPY config.json.example /app/config.json.example
 
+RUN chown -R appuser:appuser /app
+
 EXPOSE 8000
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
 
 CMD ["python", "-m", "src.app"]
