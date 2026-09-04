@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 interface TrendPoint {
@@ -29,7 +29,23 @@ const showMedian = ref(false)
 const showMin = ref(true)
 const showMinTrend = ref(true)
 
-const chartWidth = 720
+const chartContainerRef = ref<HTMLDivElement | null>(null)
+const chartWidth = ref(720)
+let resizeObserver: ResizeObserver | null = null
+
+function observeChartContainer() {
+  resizeObserver?.disconnect()
+  const container = chartContainerRef.value
+  if (!container || typeof ResizeObserver === 'undefined') return
+
+  resizeObserver = new ResizeObserver(([entry]) => {
+    if (entry && entry.contentRect.width > 0) {
+      chartWidth.value = Math.round(entry.contentRect.width)
+    }
+  })
+  resizeObserver.observe(container)
+}
+
 const chartHeight = computed(() => props.height)
 const paddingX = 24
 const plotTop = 46
@@ -48,6 +64,17 @@ const validPoints = computed(() => {
   )
 })
 
+watch(
+  () => validPoints.value.length,
+  async () => {
+    await nextTick()
+    observeChartContainer()
+  },
+  { immediate: true, flush: 'post' },
+)
+
+onBeforeUnmount(() => resizeObserver?.disconnect())
+
 const valueRange = computed(() => {
   const values = validPoints.value
     .flatMap((point) => [
@@ -64,8 +91,8 @@ const valueRange = computed(() => {
 })
 
 function resolveX(index: number) {
-  if (validPoints.value.length <= 1) return chartWidth / 2
-  const usableWidth = chartWidth - paddingX * 2
+  if (validPoints.value.length <= 1) return chartWidth.value / 2
+  const usableWidth = chartWidth.value - paddingX * 2
   return paddingX + (usableWidth / (validPoints.value.length - 1)) * index
 }
 function resolveY(value: number) {
@@ -193,7 +220,7 @@ function onMove(e: MouseEvent) {
   const svg = svgRef.value
   if (!svg || validPoints.value.length === 0) return
   const rect = svg.getBoundingClientRect()
-  const vbAspect = chartWidth / chartHeight.value
+  const vbAspect = chartWidth.value / chartHeight.value
   const svgAspect = rect.width / rect.height
   let renderedWidth: number
   let offsetX: number
@@ -205,7 +232,7 @@ function onMove(e: MouseEvent) {
     renderedWidth = rect.width
     offsetX = 0
   }
-  const x = ((e.clientX - rect.left - offsetX) / renderedWidth) * chartWidth
+  const x = ((e.clientX - rect.left - offsetX) / renderedWidth) * chartWidth.value
   let best = 0
   let bestDist = Infinity
   validPoints.value.forEach((_, i) => {
@@ -222,7 +249,7 @@ function onLeave() {
 }
 function tipX() {
   if (hoverIndex.value === null) return 4
-  return Math.max(4, Math.min(resolveX(hoverIndex.value) + 10, chartWidth - tipWidth.value - 4))
+  return Math.max(4, Math.min(resolveX(hoverIndex.value) + 10, chartWidth.value - tipWidth.value - 4))
 }
 function fmt(v: number | null | undefined) {
   return typeof v === 'number' ? `¥${v}` : '—'
@@ -308,7 +335,7 @@ function fmt(v: number | null | undefined) {
       {{ t('results.chart.noTrend') }}
     </div>
 
-    <div v-else>
+    <div v-else ref="chartContainerRef" class="w-full">
       <svg
         ref="svgRef"
         :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
