@@ -201,7 +201,6 @@ const zhCN = {
       avgPrice: '均价',
       medianPrice: '中位数',
       minPrice: '每日最低价',
-      maxPrice: '每日最高价',
       minTrend: '最低价趋势',
       dipHeader: '每日最低价曲线',
       fullHeader: '每日价格曲线',

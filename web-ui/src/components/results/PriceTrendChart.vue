@@ -235,7 +235,7 @@ const tipHeight = computed(() => (isLargeTooltip.value ? 164 : 140))
 const tipTitleSize = computed(() => (isLargeTooltip.value ? 17 : 14))
 const tipTextSize = computed(() => (isLargeTooltip.value ? 16 : 13))
 const tipLineY = computed(() =>
-  isLargeTooltip.value ? [54, 80, 106, 132] : [46, 68, 90, 112],
+  isLargeTooltip.value ? [54, 80, 106] : [46, 68, 90],
 )
 function onMove(e: MouseEvent) {
   const svg = svgRef.value
@@ -485,33 +485,28 @@ function fmt(v: number | null | undefined) {
             <text v-if="!isMinOnly && showAvg" x="14" :y="tipLineY[0]" fill="#7dd3fc" :font-size="tipTextSize">均 {{ fmt(hoverPoint.avg_price) }}</text>
             <text v-if="!isMinOnly && showMedian" x="14" :y="tipLineY[1]" fill="#fcd34d" :font-size="tipTextSize">中 {{ fmt(hoverPoint.median_price) }}</text>
             <text v-if="showMin || showMinTrend" x="14" :y="tipLineY[2]" fill="#6ee7b7" :font-size="tipTextSize">低 {{ fmt(hoverPoint.min_price) }}</text>
-            <text x="14" :y="tipLineY[3]" fill="#fca5a5" :font-size="tipTextSize">高 {{ fmt(hoverPoint.max_price) }}</text>
           </g>
         </g>
       </svg>
 
       <div
         v-if="isDetailsBelow && detailPoint"
-        class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-[11px] sm:grid-cols-4"
+        class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-[11px] sm:grid-cols-3"
       >
-        <div class="col-span-2 font-bold tabular-nums text-slate-600 sm:col-span-4">
+        <div class="col-span-2 border-b border-slate-100 pb-1 font-bold tabular-nums text-slate-600 sm:col-span-3">
           {{ detailPoint.day }}
         </div>
-        <div v-if="!isMinOnly" class="flex items-center justify-between gap-2 text-slate-500">
-          <span>{{ t('results.chart.avgPrice') }}</span>
+        <div v-if="!isMinOnly" class="flex min-w-0 flex-col gap-0.5 text-slate-500">
+          <span class="truncate">{{ t('results.chart.avgPrice') }}</span>
           <strong class="tabular-nums text-sky-700">{{ fmt(detailPoint.avg_price) }}</strong>
         </div>
-        <div v-if="!isMinOnly" class="flex items-center justify-between gap-2 text-slate-500">
-          <span>{{ t('results.chart.medianPrice') }}</span>
+        <div v-if="!isMinOnly" class="flex min-w-0 flex-col gap-0.5 text-slate-500">
+          <span class="truncate">{{ t('results.chart.medianPrice') }}</span>
           <strong class="tabular-nums text-amber-700">{{ fmt(detailPoint.median_price) }}</strong>
         </div>
-        <div class="flex items-center justify-between gap-2 text-slate-500">
-          <span>{{ t('results.chart.minPrice') }}</span>
+        <div class="flex min-w-0 flex-col gap-0.5 text-slate-500">
+          <span class="truncate">{{ t('results.chart.minPrice') }}</span>
           <strong class="tabular-nums text-emerald-700">{{ fmt(detailPoint.min_price) }}</strong>
-        </div>
-        <div class="flex items-center justify-between gap-2 text-slate-500">
-          <span>{{ t('results.chart.maxPrice') }}</span>
-          <strong class="tabular-nums text-rose-700">{{ fmt(detailPoint.max_price) }}</strong>
         </div>
       </div>
     </div>
