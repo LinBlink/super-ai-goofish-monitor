@@ -242,7 +242,14 @@ const zhCN = {
     confirmClear: '确认清空',
     trimmedNotice: '...日志过长已截断，仅保留最新内容...',
     emptyAfterFilter: '当前等级没有匹配的日志行。',
+    empty: '当前任务还没有运行日志。',
     filterLevel: '等级过滤',
+    columns: {
+      line: '行号',
+      time: '时间',
+      level: '等级',
+      message: '日志内容',
+    },
     levels: {
       all: '全部',
       debug: 'DEBUG',

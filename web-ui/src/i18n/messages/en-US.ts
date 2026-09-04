@@ -240,7 +240,14 @@ const enUS = {
     confirmClear: 'Clear',
     trimmedNotice: '...log output was truncated to keep only the newest content...',
     emptyAfterFilter: 'No log lines match the current level filter.',
+    empty: 'This task has no runtime logs yet.',
     filterLevel: 'Level Filter',
+    columns: {
+      line: 'Line',
+      time: 'Time',
+      level: 'Level',
+      message: 'Message',
+    },
     levels: {
       all: 'All',
       debug: 'DEBUG',

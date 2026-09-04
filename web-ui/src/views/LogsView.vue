@@ -94,7 +94,11 @@ const levelOptions = [
   { value: 'ERROR', label: t('logs.levels.error') },
   { value: 'CRITICAL', label: t('logs.levels.critical') },
 ]
-const parsedLogs = computed(() => logs.value.split('\n').map(parseLogLine))
+const parsedLogs = computed(() => {
+  const lines = logs.value.split('\n')
+  if (lines.at(-1) === '') lines.pop()
+  return lines.map(parseLogLine)
+})
 const filteredLogLines = computed(() => {
   if (levelFilter.value === 'all') return parsedLogs.value
   const min = LEVEL_SEVERITY[levelFilter.value] ?? 0
@@ -267,14 +271,14 @@ async function handleClearLogs() {
         class="absolute inset-0 overflow-auto font-mono text-[12px] leading-relaxed"
       >
         <div class="sticky top-0 z-10 grid min-w-[720px] grid-cols-[3.5rem_10.5rem_5.5rem_minmax(0,1fr)] border-b border-slate-700/80 bg-slate-900/95 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] backdrop-blur">
-          <span class="text-slate-500">#</span>
-          <span class="text-cyan-400">TIME</span>
-          <span class="text-violet-400">LEVEL</span>
-          <span class="text-emerald-400">MESSAGE</span>
+          <span class="text-slate-500">{{ t('logs.columns.line') }}</span>
+          <span class="text-cyan-400">{{ t('logs.columns.time') }}</span>
+          <span class="text-violet-400">{{ t('logs.columns.level') }}</span>
+          <span class="text-emerald-400">{{ t('logs.columns.message') }}</span>
         </div>
 
         <div v-if="logsEmpty || filteredEmpty" class="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
-          {{ filteredEmpty ? t('logs.emptyAfterFilter') : '' }}
+          {{ filteredEmpty ? t('logs.emptyAfterFilter') : t('logs.empty') }}
         </div>
 
         <div v-else class="min-w-[720px] py-1">
