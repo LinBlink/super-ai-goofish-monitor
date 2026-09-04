@@ -72,7 +72,7 @@ function formatRelativeDay(days: number) {
 
 <template>
   <article
-    class="xy-card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-xy-hover"
+    class="xy-card group relative flex cursor-pointer flex-col overflow-hidden transition-shadow hover:shadow-xy-hover"
   >
     <!-- 头部：标�?+ 跌幅 -->
     <header class="flex items-start justify-between gap-2 p-3 pb-2">
@@ -127,8 +127,8 @@ function formatRelativeDay(days: number) {
       class="flex items-center justify-between gap-2 border-t border-border bg-muted px-3 py-2 active:bg-muted/80"
       role="button"
       tabindex="0"
-      @click="openLowestItem"
-      @keyup.enter="openLowestItem"
+      @click.stop="openLowestItem"
+      @keyup.enter.stop="openLowestItem"
     >
       <div class="min-w-0 flex-1">
         <p class="line-clamp-1 text-[12px] font-medium text-foreground" :title="data.lowest_item.title">

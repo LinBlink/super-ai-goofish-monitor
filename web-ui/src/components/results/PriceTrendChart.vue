@@ -284,7 +284,7 @@ function fmt(v: number | null | undefined) {
             class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
             :class="showMin ? 'opacity-100' : 'opacity-35 line-through'"
             :aria-pressed="showMin"
-            @click="showMin = !showMin"
+            @click.stop="showMin = !showMin"
           >
             <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
             {{ t('results.chart.minPrice') }}
@@ -294,7 +294,7 @@ function fmt(v: number | null | undefined) {
             class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
             :class="showMinTrend ? 'opacity-100' : 'opacity-35 line-through'"
             :aria-pressed="showMinTrend"
-            @click="showMinTrend = !showMinTrend"
+            @click.stop="showMinTrend = !showMinTrend"
           >
             <span class="h-1 w-4 rounded-full bg-violet-600" />
             {{ t('results.chart.minTrend') }}
@@ -306,7 +306,7 @@ function fmt(v: number | null | undefined) {
             class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
             :class="showAvg ? 'opacity-100' : 'opacity-35 line-through'"
             :aria-pressed="showAvg"
-            @click="showAvg = !showAvg"
+            @click.stop="showAvg = !showAvg"
           >
             <span class="h-2.5 w-2.5 rounded-full bg-sky-600" />
             {{ t('results.chart.avgPrice') }}
@@ -316,7 +316,7 @@ function fmt(v: number | null | undefined) {
             class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
             :class="showMedian ? 'opacity-100' : 'opacity-35 line-through'"
             :aria-pressed="showMedian"
-            @click="showMedian = !showMedian"
+            @click.stop="showMedian = !showMedian"
           >
             <span class="h-2.5 w-2.5 rounded-full bg-amber-500" />
             {{ t('results.chart.medianPrice') }}
@@ -326,7 +326,7 @@ function fmt(v: number | null | undefined) {
             class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
             :class="showMin ? 'opacity-100' : 'opacity-35 line-through'"
             :aria-pressed="showMin"
-            @click="showMin = !showMin"
+            @click.stop="showMin = !showMin"
           >
             <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
             {{ t('results.chart.minPrice') }}
@@ -336,7 +336,7 @@ function fmt(v: number | null | undefined) {
             class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
             :class="showMinTrend ? 'opacity-100' : 'opacity-35 line-through'"
             :aria-pressed="showMinTrend"
-            @click="showMinTrend = !showMinTrend"
+            @click.stop="showMinTrend = !showMinTrend"
           >
             <span class="h-1 w-4 rounded-full bg-violet-600" />
             {{ t('results.chart.minTrend') }}

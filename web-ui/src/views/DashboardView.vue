@@ -39,6 +39,16 @@ function openTask(item: { filename: string | null }) {
     router.push({ name: 'Results', query: { file: item.filename } })
   }
 }
+function openDipTask(item: { task_id: number | null; keyword: string }) {
+  const summary = (
+    item.task_id === null
+      ? undefined
+      : taskSummaries.value.find((candidate) => candidate.task_id === item.task_id)
+  ) ?? taskSummaries.value.find(
+    (candidate) => candidate.keyword.trim().toLowerCase() === item.keyword.trim().toLowerCase(),
+  )
+  if (summary) openTask(summary)
+}
 function openLowestItem(link: string) {
   if (link) window.open(link, '_blank', 'noopener,noreferrer')
 }
@@ -148,6 +158,7 @@ void openLowestItem
           v-for="task in decliningDipTasks"
           :key="task.keyword + (task.task_id ?? '')"
           :data="task"
+          @click="openDipTask(task)"
         />
       </div>
     </section>
