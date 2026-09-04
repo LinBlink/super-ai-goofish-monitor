@@ -35,7 +35,7 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 
 const trendPoints = computed(() =>
-  props.data.trend.map((p) => {
+  (props.data.trend || []).map((p) => {
     const min = typeof p.min_price === 'number' ? p.min_price : null
     const avg = typeof p.avg_price === 'number'
       ? p.avg_price
@@ -114,7 +114,6 @@ function formatRelativeDay(days: number) {
         </p>
       </div>
       <PriceTrendChart
-        v-if="trendPoints.length > 0"
         :points="trendPoints"
         :height="200"
       />
