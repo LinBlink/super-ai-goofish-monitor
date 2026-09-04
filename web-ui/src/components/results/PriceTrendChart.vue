@@ -218,6 +218,7 @@ function fmt(v: number | null | undefined) {
         :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
         :style="{ height: chartHeight + 'px' }"
         class="w-full"
+        preserveAspectRatio="none"
         role="img"
         :aria-label="t('results.chart.noTrend')"
         @mousemove="onMove"
