@@ -108,30 +108,30 @@ const logsEmpty = computed(() => logs.value.trim().length === 0)
 const filteredEmpty = computed(() => !logsEmpty.value && filteredLogLines.value.length === 0)
 
 const levelClass: Record<DisplayLevel, string> = {
-  DEBUG: 'border-violet-400/20 bg-violet-500/[0.04]',
-  INFO: 'border-sky-400/20 bg-sky-500/[0.035]',
-  WARNING: 'border-amber-400/40 bg-amber-500/[0.08]',
-  ERROR: 'border-rose-400/50 bg-rose-500/[0.10]',
-  CRITICAL: 'border-fuchsia-400/60 bg-fuchsia-500/[0.13]',
-  EVENT: 'border-emerald-400/15 bg-emerald-500/[0.025]',
+  DEBUG: 'border-violet-400 bg-violet-50/50',
+  INFO: 'border-sky-400 bg-sky-50/40',
+  WARNING: 'border-amber-500 bg-amber-50/70',
+  ERROR: 'border-rose-500 bg-rose-50/80',
+  CRITICAL: 'border-fuchsia-600 bg-fuchsia-50/90',
+  EVENT: 'border-emerald-400 bg-emerald-50/30',
 }
 const badgeClass: Record<DisplayLevel, string> = {
-  DEBUG: 'bg-violet-400/15 text-violet-300 ring-violet-400/30',
-  INFO: 'bg-sky-400/15 text-sky-300 ring-sky-400/30',
-  WARNING: 'bg-amber-400/15 text-amber-300 ring-amber-400/30',
-  ERROR: 'bg-rose-400/20 text-rose-300 ring-rose-400/40',
-  CRITICAL: 'bg-fuchsia-400/20 text-fuchsia-200 ring-fuchsia-400/50',
-  EVENT: 'bg-emerald-400/10 text-emerald-300 ring-emerald-400/20',
+  DEBUG: 'bg-violet-100 text-violet-700 ring-violet-300',
+  INFO: 'bg-sky-100 text-sky-700 ring-sky-300',
+  WARNING: 'bg-amber-100 text-amber-800 ring-amber-300',
+  ERROR: 'bg-rose-100 text-rose-700 ring-rose-300',
+  CRITICAL: 'bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-300',
+  EVENT: 'bg-emerald-100 text-emerald-700 ring-emerald-300',
 }
 const tokenClass: Record<TokenTone, string> = {
-  plain: 'text-slate-200',
-  danger: 'rounded bg-rose-400/15 px-0.5 font-bold text-rose-300',
-  warning: 'rounded bg-amber-400/15 px-0.5 font-semibold text-amber-300',
-  success: 'font-semibold text-emerald-300',
-  ai: 'font-semibold text-fuchsia-300',
-  network: 'text-cyan-300 underline decoration-cyan-400/30 underline-offset-2',
-  progress: 'font-semibold text-violet-300',
-  price: 'font-bold text-yellow-300',
+  plain: 'text-slate-700',
+  danger: 'rounded bg-rose-100 px-0.5 font-bold text-rose-700',
+  warning: 'rounded bg-amber-100 px-0.5 font-semibold text-amber-800',
+  success: 'font-semibold text-emerald-700',
+  ai: 'font-semibold text-fuchsia-700',
+  network: 'text-cyan-700 underline decoration-cyan-400/40 underline-offset-2',
+  progress: 'font-semibold text-violet-700',
+  price: 'font-bold text-orange-700',
 }
 
 watch(logs, async () => {
@@ -214,11 +214,11 @@ async function handleClearLogs() {
         <h1 class="text-base font-black text-foreground">{{ t('logs.title') }}</h1>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2 lg:ml-auto">
-        <div class="flex items-center gap-1.5">
+      <div class="grid w-full grid-cols-2 items-center gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap">
+        <div class="col-span-2 flex items-center gap-1.5 lg:col-span-1">
           <Label class="text-[11px] text-slate-500">{{ t('logs.task') }}</Label>
           <Select v-model="selectedTaskId">
-            <SelectTrigger class="h-8 w-[200px] text-xs">
+            <SelectTrigger class="h-8 min-w-0 flex-1 text-xs lg:w-[200px] lg:flex-none">
               <SelectValue :placeholder="t('logs.selectTask')" />
             </SelectTrigger>
             <SelectContent>
@@ -228,10 +228,10 @@ async function handleClearLogs() {
             </SelectContent>
           </Select>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div class="col-span-2 flex items-center gap-1.5 lg:col-span-1">
           <Label class="text-[11px] text-slate-500">{{ t('logs.filterLevel') }}</Label>
           <Select v-model="levelFilter">
-            <SelectTrigger class="h-8 w-[140px] text-xs">
+            <SelectTrigger class="h-8 min-w-0 flex-1 text-xs lg:w-[140px] lg:flex-none">
               <SelectValue :placeholder="t('logs.levels.all')" />
             </SelectTrigger>
             <SelectContent>
@@ -241,7 +241,7 @@ async function handleClearLogs() {
             </SelectContent>
           </Select>
         </div>
-        <button type="button" class="xy-btn-outline h-8 text-[12px]" :disabled="!selectedTaskId" @click="fetchLogs">
+        <button type="button" class="xy-btn-outline h-8 justify-center text-[12px]" :disabled="!selectedTaskId" @click="fetchLogs">
           <RefreshCw class="h-3 w-3" />
           {{ t('common.refresh') }}
         </button>
@@ -257,41 +257,41 @@ async function handleClearLogs() {
           <Switch id="auto-scroll" v-model="autoScroll" />
           <Label for="auto-scroll" class="text-[11px] text-slate-500">{{ t('logs.autoScroll') }}</Label>
         </div>
-        <button type="button" class="xy-btn-danger h-8 text-[12px]" :disabled="!selectedTaskId" @click="openClearDialog">
+        <button type="button" class="xy-btn-danger h-8 justify-center text-[12px]" :disabled="!selectedTaskId" @click="openClearDialog">
           <Trash2 class="h-3 w-3" />
           {{ t('logs.clearLogs') }}
         </button>
       </div>
     </header>
 
-    <div class="relative flex-1 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 shadow-xl shadow-slate-950/10">
+    <div class="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-sm">
       <div
         ref="logContainer"
         @scroll="handleScroll"
         class="absolute inset-0 overflow-auto font-mono text-[12px] leading-relaxed"
       >
-        <div class="sticky top-0 z-10 grid min-w-[720px] grid-cols-[3.5rem_10.5rem_5.5rem_minmax(0,1fr)] border-b border-slate-700/80 bg-slate-900/95 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] backdrop-blur">
-          <span class="text-slate-500">{{ t('logs.columns.line') }}</span>
-          <span class="text-cyan-400">{{ t('logs.columns.time') }}</span>
-          <span class="text-violet-400">{{ t('logs.columns.level') }}</span>
-          <span class="text-emerald-400">{{ t('logs.columns.message') }}</span>
+        <div class="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto] border-b border-slate-200 bg-slate-50/95 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] shadow-sm backdrop-blur sm:grid-cols-[3.5rem_10.5rem_5.5rem_minmax(0,1fr)]">
+          <span class="hidden text-slate-400 sm:block">{{ t('logs.columns.line') }}</span>
+          <span class="text-cyan-700">{{ t('logs.columns.time') }}</span>
+          <span class="text-violet-700">{{ t('logs.columns.level') }}</span>
+          <span class="hidden text-emerald-700 sm:block">{{ t('logs.columns.message') }}</span>
         </div>
 
         <div v-if="logsEmpty || filteredEmpty" class="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
           {{ filteredEmpty ? t('logs.emptyAfterFilter') : t('logs.empty') }}
         </div>
 
-        <div v-else class="min-w-[720px] py-1">
+        <div v-else class="py-1">
           <div
             v-for="line in filteredLogLines"
             :key="line.number"
-            class="group grid grid-cols-[3.5rem_10.5rem_5.5rem_minmax(0,1fr)] border-l-2 px-3 py-1.5 transition-colors hover:bg-white/[0.07]"
+            class="group grid grid-cols-[minmax(0,1fr)_auto] border-l-2 px-3 py-2 transition-colors hover:bg-slate-100/80 sm:grid-cols-[3.5rem_10.5rem_5.5rem_minmax(0,1fr)] sm:py-1.5"
             :class="levelClass[line.level]"
           >
-            <span class="select-none pr-4 text-right text-slate-600 group-hover:text-slate-400">
+            <span class="hidden select-none pr-4 text-right text-slate-300 group-hover:text-slate-500 sm:block">
               {{ line.number }}
             </span>
-            <time class="font-medium tabular-nums text-cyan-300/90">
+            <time class="font-medium tabular-nums text-cyan-700">
               {{ line.timestamp || '····-··-·· ··:··:··' }}
             </time>
             <span>
@@ -302,7 +302,7 @@ async function handleClearLogs() {
                 {{ line.level }}
               </span>
             </span>
-            <span class="whitespace-pre-wrap break-words pr-4">
+            <span class="col-span-2 mt-1 whitespace-pre-wrap break-words text-[12px] leading-5 sm:col-span-1 sm:mt-0 sm:pr-4">
               <span
                 v-for="(token, tokenIndex) in line.tokens"
                 :key="tokenIndex"
