@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDashboard } from '@/composables/useDashboard'
+import DipProductCard from '@/components/results/DipProductCard.vue'
 import PriceTrendChart from '@/components/results/PriceTrendChart.vue'
 import {
   TrendingDown,
@@ -198,7 +199,11 @@ void openLowestItem
             class="mt-2"
             @click.stop
           >
-            <PriceTrendChart :points="item.history_daily_trend" :height="280" />
+            <PriceTrendChart
+              :points="item.history_daily_trend"
+              :height="280"
+              tooltip-size="large"
+            />
           </div>
           <div class="mt-2 flex justify-end">
             <ArrowRight class="h-3.5 w-3.5 text-slate-400" />

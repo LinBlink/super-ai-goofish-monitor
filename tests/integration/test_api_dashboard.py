@@ -127,6 +127,43 @@ def test_dashboard_summary_aggregates_tasks_and_results(tmp_path, monkeypatch):
     assert ipad_summary["history_avg_price"] is None
 
 
+def test_dashboard_summary_stream_emits_cards_before_complete(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    repository = SqliteTaskRepository(
+        db_path=str(tmp_path / "app.sqlite3"),
+        legacy_config_file=None,
+    )
+    task_service = TaskService(repository)
+    app = FastAPI()
+    app.include_router(dashboard.router)
+    app.dependency_overrides[deps.get_task_service] = lambda: task_service
+
+    import asyncio
+
+    asyncio.run(
+        task_service.create_task(
+            TaskCreate(
+                task_name="流式任务",
+                keyword="streaming",
+                description="验证概览卡片逐条返回。",
+                max_pages=1,
+                personal_only=True,
+            )
+        )
+    )
+
+    events = [
+        json.loads(line)
+        for line in TestClient(app).get("/api/dashboard/summary/stream").text.splitlines()
+        if line
+    ]
+
+    assert events[0]["type"] == "task_summary"
+    assert events[0]["data"]["task_name"] == "流式任务"
+    assert events[-1]["type"] == "complete"
+    assert events[-1]["data"]["task_summaries"][0]["task_name"] == "流式任务"
+
+
 def test_dashboard_summary_includes_latest_history_avg_price(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 

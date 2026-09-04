@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Bell, Layers, Sparkles } from 'lucide-vue-next'
+import { Bell, Layers, ScanSearch, Sparkles } from 'lucide-vue-next'
 import type { TaskBatchUpdate } from '@/types/task.d.ts'
 
 const UNCHANGED = '__unchanged__'
@@ -40,6 +40,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const notifyEnabled = ref<string>(UNCHANGED)
+const aiTitleScreening = ref<string>(UNCHANGED)
 const maxPages = ref<string>(UNCHANGED)
 const newPublishOption = ref<string>(UNCHANGED)
 const submitting = ref(false)
@@ -49,6 +50,7 @@ watch(
   (val) => {
     if (val) {
       notifyEnabled.value = UNCHANGED
+      aiTitleScreening.value = UNCHANGED
       maxPages.value = UNCHANGED
       newPublishOption.value = UNCHANGED
       submitting.value = false
@@ -69,6 +71,10 @@ const notifyEnabledEffective = computed(() =>
   notifyEnabled.value === UNCHANGED ? null : notifyEnabled.value === 'true',
 )
 
+const aiTitleScreeningEffective = computed(() =>
+  aiTitleScreening.value === UNCHANGED ? null : aiTitleScreening.value === 'true',
+)
+
 const maxPagesEffective = computed(() => {
   if (maxPages.value === UNCHANGED) return null
   const n = Number(maxPages.value)
@@ -83,6 +89,7 @@ const newPublishEffective = computed(() => {
 const hasAnyChange = computed(
   () =>
     notifyEnabledEffective.value !== null ||
+    aiTitleScreeningEffective.value !== null ||
     maxPagesEffective.value !== null ||
     newPublishEffective.value !== null,
 )
@@ -104,6 +111,9 @@ async function onSubmit() {
   const updates: TaskBatchUpdate = {}
   if (notifyEnabledEffective.value !== null) {
     updates.notify_enabled = notifyEnabledEffective.value
+  }
+  if (aiTitleScreeningEffective.value !== null) {
+    updates.ai_title_screening = aiTitleScreeningEffective.value
   }
   if (maxPagesEffective.value !== null) {
     updates.max_pages = maxPagesEffective.value
@@ -176,6 +186,41 @@ const subtitle = computed(() => {
                 :model-value="notifyEnabled === 'true'"
                 :aria-label="t('tasks.form.notifyEnabled')"
                 @update:model-value="(val) => (notifyEnabled = val ? 'true' : 'false')"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- AI 标题预筛 -->
+        <div class="rounded-lg border border-slate-200/70 bg-white/60 p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-start gap-2">
+              <ScanSearch class="mt-0.5 h-4 w-4 text-slate-500" />
+              <div>
+                <Label class="text-sm font-semibold text-slate-700">
+                  {{ t('tasks.form.aiTitleScreening') }}
+                </Label>
+                <p class="text-[11px] text-slate-400">
+                  {{ t('tasks.batchEdit.aiTitleScreeningHint') }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <Select v-model="aiTitleScreening">
+                <SelectTrigger class="h-8 w-[140] text-xs">
+                  <SelectValue :placeholder="t('tasks.batchEdit.unchanged')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__unchanged__">{{ t('tasks.batchEdit.unchanged') }}</SelectItem>
+                  <SelectItem value="true">{{ t('tasks.batchEdit.enable') }}</SelectItem>
+                  <SelectItem value="false">{{ t('tasks.batchEdit.disable') }}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Switch
+                v-if="aiTitleScreening !== '__unchanged__'"
+                :model-value="aiTitleScreening === 'true'"
+                :aria-label="t('tasks.form.aiTitleScreening')"
+                @update:model-value="(val) => (aiTitleScreening = val ? 'true' : 'false')"
               />
             </div>
           </div>

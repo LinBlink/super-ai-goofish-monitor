@@ -196,6 +196,29 @@ async def list_result_filenames() -> list[str]:
     return await asyncio.to_thread(_list_result_filenames_sync)
 
 
+async def list_keywords_with_results_on_day(day: str) -> set[str]:
+    """返回指定本地日期（YYYY-MM-DD）已有结果数据的任务关键词。"""
+    return await asyncio.to_thread(_list_keywords_with_results_on_day_sync, day)
+
+
+def _list_keywords_with_results_on_day_sync(day: str) -> set[str]:
+    bootstrap_sqlite_storage()
+    with sqlite_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT keyword
+            FROM result_items
+            WHERE substr(crawl_time, 1, 10) = ?
+            """,
+            (day,),
+        ).fetchall()
+    return {
+        str(row["keyword"] or "").strip().lower()
+        for row in rows
+        if str(row["keyword"] or "").strip()
+    }
+
+
 def _list_result_filenames_sync() -> list[str]:
     bootstrap_sqlite_storage()
     with sqlite_connection() as conn:

@@ -4,6 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from typing import List
+from datetime import datetime
 import os
 import aiofiles
 from src.api.dependencies import (
@@ -33,7 +34,11 @@ from src.utils import resolve_task_log_path
 from src.services.account_strategy_service import normalize_account_strategy
 from src.infrastructure.persistence.storage_names import build_result_filename
 from src.services.price_history_service import delete_price_snapshots, rename_price_history
-from src.services.result_storage_service import delete_result_file_records, rename_result_records
+from src.services.result_storage_service import (
+    delete_result_file_records,
+    list_keywords_with_results_on_day,
+    rename_result_records,
+)
 from src.api.routes import websocket
 from src.infrastructure.logging.logger import get_logger
 
@@ -97,6 +102,41 @@ async def start_all_tasks(
         else:
             skipped += 1
     return {"message": f"已加入执行队列 {enqueued} 个任务", "enqueued": enqueued, "skipped": skipped}
+
+
+@router.post("/start-without-data-today", response_model=dict)
+async def start_tasks_without_data_today(
+    task_service: TaskService = Depends(get_task_service),
+    process_service: ProcessService = Depends(get_process_service),
+):
+    """将今日尚无结果数据的已启用空闲任务加入执行队列。"""
+    today = datetime.now().astimezone().date().isoformat()
+    keywords_with_data = await list_keywords_with_results_on_day(today)
+    tasks = await task_service.get_all_tasks()
+    enqueued = 0
+    skipped_with_data = 0
+    skipped_unavailable = 0
+
+    for task in tasks:
+        normalized_keyword = (task.keyword or "").strip().lower()
+        if normalized_keyword in keywords_with_data:
+            skipped_with_data += 1
+            continue
+        if not task.enabled or task.is_running or process_service.is_queued(task.id):
+            skipped_unavailable += 1
+            continue
+        if await process_service.enqueue_task(task.id, task.task_name):
+            enqueued += 1
+        else:
+            skipped_unavailable += 1
+
+    return {
+        "message": f"已加入执行队列 {enqueued} 个今日无数据任务",
+        "date": today,
+        "enqueued": enqueued,
+        "skipped_with_data": skipped_with_data,
+        "skipped_unavailable": skipped_unavailable,
+    }
 @router.post("/stop-all", response_model=dict)
 async def stop_all_tasks(
     process_service: ProcessService = Depends(get_process_service),
@@ -184,12 +224,12 @@ async def batch_update_tasks(
     service: TaskService = Depends(get_task_service),
     scheduler_service: SchedulerService = Depends(get_scheduler_service),
 ):
-    """批量修改任务的指定字段（仅支持通知推送 / 搜索页数 / 新发布范围）。"""
+    """批量修改任务的指定字段。"""
     raw_ids = payload.task_ids
     update_payload = payload.updates.model_dump(exclude_unset=True)
-    # notify_enabled / max_pages 在 Task 上是必填字段，
+    # notify_enabled / ai_title_screening / max_pages 在 Task 上是必填字段，
     # null 视作「不修改」；new_publish_option 是 Optional[str]，null 表示「清空」。
-    for non_optional_field in ("notify_enabled", "max_pages"):
+    for non_optional_field in ("notify_enabled", "ai_title_screening", "max_pages"):
         if (
             non_optional_field in update_payload
             and update_payload[non_optional_field] is None

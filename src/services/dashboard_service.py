@@ -5,6 +5,7 @@ Dashboard 聚合服务
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from typing import Any
 
 from src.domain.models.task import Task
@@ -73,6 +74,62 @@ async def build_dashboard_snapshot(tasks: list[Task]) -> dict[str, Any]:
         )[:MAX_RECENT_ACTIVITIES],
         "declining_dip_tasks": declining_dip_tasks,
         "focus_file": focus_file,
+    }
+
+
+async def iter_dashboard_snapshot_events(
+    tasks: list[Task],
+) -> AsyncIterator[dict[str, Any]]:
+    """逐步生成概览数据事件，供前端在聚合完成前渲染卡片。"""
+    task_lookup = {normalize_text(task.keyword): task for task in tasks}
+    task_summaries: dict[str, dict[str, Any]] = {}
+    recent_activities = build_task_state_activities(tasks)
+    latest_updated_at = None
+
+    # 任务本身不依赖结果文件，优先发出，让页面立即出现卡片骨架数据。
+    for task in tasks:
+        summary = build_empty_summary(task)
+        task_summaries[task.task_name] = summary
+        yield {"type": "task_summary", "data": summary}
+
+    for filename in await list_result_filenames():
+        summary, activities, file_latest_time = await summarize_result_file(
+            filename, task_lookup
+        )
+        if summary:
+            task_summaries[summary["task_name"]] = summary
+            yield {"type": "task_summary", "data": summary}
+        recent_activities.extend(activities)
+        if file_latest_time and (
+            latest_updated_at is None or file_latest_time > latest_updated_at
+        ):
+            latest_updated_at = file_latest_time
+
+    summary_list = sorted(
+        task_summaries.values(), key=sort_key_by_latest_time, reverse=True
+    )
+    focus_file = next(
+        (item["filename"] for item in summary_list if item.get("filename")), None
+    )
+    declining_dip_tasks = await _collect_declining_dip_tasks(task_lookup)
+    for dip_task in declining_dip_tasks:
+        yield {"type": "declining_dip_task", "data": dip_task}
+
+    yield {
+        "type": "complete",
+        "data": {
+            "summary": _build_summary_metrics(
+                tasks, summary_list, latest_updated_at
+            ),
+            "task_summaries": summary_list,
+            "recent_activities": sorted(
+                recent_activities,
+                key=sort_key_by_activity_time,
+                reverse=True,
+            )[:MAX_RECENT_ACTIVITIES],
+            "declining_dip_tasks": declining_dip_tasks,
+            "focus_file": focus_file,
+        },
     }
 
 

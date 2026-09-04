@@ -329,7 +329,9 @@ class TaskUpdate(BaseModel):
         return self
 
 
-_BATCH_ALLOWED_FIELDS = frozenset({"notify_enabled", "max_pages", "new_publish_option"})
+_BATCH_ALLOWED_FIELDS = frozenset(
+    {"notify_enabled", "ai_title_screening", "max_pages", "new_publish_option"}
+)
 
 
 class TaskBatchUpdateRequest(BaseModel):
@@ -351,11 +353,12 @@ class TaskBatchUpdateRequest(BaseModel):
 
 
 class TaskBatchUpdate(BaseModel):
-    """批量更新任务的 DTO：仅允许批量修改的字段（通知推送 / 搜索页数 / 新发布范围）。"""
+    """批量更新任务的 DTO：仅允许批量修改的安全字段。"""
 
     model_config = ConfigDict(extra="ignore")
 
     notify_enabled: Optional[bool] = None
+    ai_title_screening: Optional[bool] = None
     max_pages: Optional[int] = None
     new_publish_option: Optional[str] = None
 
@@ -377,7 +380,7 @@ class TaskBatchUpdate(BaseModel):
         # 变成 None，会被误判为「没传字段」而拒绝 422。
         if not self.model_fields_set:
             raise ValueError(
-                "至少需要指定一个批量修改字段（notify_enabled / max_pages / new_publish_option）。"
+                "至少需要指定一个批量修改字段（notify_enabled / ai_title_screening / max_pages / new_publish_option）。"
             )
         return self
 

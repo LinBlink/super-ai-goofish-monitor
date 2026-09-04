@@ -120,6 +120,20 @@ def test_create_list_update_delete_task(api_client, api_context, sample_task_pay
     assert response.json() == []
 
 
+def test_batch_update_supports_ai_title_screening(api_client, sample_task_payload):
+    assert api_client.post("/api/tasks/", json=sample_task_payload).status_code == 200
+
+    response = api_client.post(
+        "/api/tasks/batch-update",
+        json={"task_ids": [0], "updates": {"ai_title_screening": False}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["succeeded"] == [0]
+    task = api_client.get("/api/tasks/0").json()
+    assert task["ai_title_screening"] is False
+
+
 def test_start_stop_task_updates_status(api_client, api_context, sample_task_payload):
     response = api_client.post("/api/tasks/", json=sample_task_payload)
     assert response.status_code == 200
@@ -141,6 +155,44 @@ def test_start_stop_task_updates_status(api_client, api_context, sample_task_pay
     process_service = api_context["process_service"]
     assert process_service.started == [(0, sample_task_payload["task_name"])]
     assert process_service.stopped == [0]
+
+
+def test_start_tasks_without_data_today_only_starts_missing_enabled_tasks(
+    api_client, api_context, sample_task_payload, monkeypatch
+):
+    payload_with_data = {**sample_task_payload, "task_name": "已有数据", "keyword": "has-data"}
+    payload_missing = {**sample_task_payload, "task_name": "今日无数据", "keyword": "missing-data"}
+    payload_disabled = {
+        **sample_task_payload,
+        "task_name": "已禁用且无数据",
+        "keyword": "disabled-missing",
+        "enabled": False,
+    }
+    for payload in (payload_with_data, payload_missing, payload_disabled):
+        assert api_client.post("/api/tasks/", json=payload).status_code == 200
+
+    async def fake_keywords_with_results(_day: str) -> set[str]:
+        return {"has-data"}
+
+    monkeypatch.setattr(
+        "src.api.routes.tasks.list_keywords_with_results_on_day",
+        fake_keywords_with_results,
+    )
+    process_service = api_context["process_service"]
+    monkeypatch.setattr(process_service, "is_queued", lambda _task_id: False, raising=False)
+
+    async def fake_enqueue(task_id: int, task_name: str) -> bool:
+        return await process_service.start_task(task_id, task_name)
+
+    monkeypatch.setattr(process_service, "enqueue_task", fake_enqueue, raising=False)
+
+    response = api_client.post("/api/tasks/start-without-data-today")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["enqueued"] == 1
+    assert payload["skipped_with_data"] == 1
+    assert payload["skipped_unavailable"] == 1
+    assert process_service.started == [(1, "今日无数据")]
 
 
 def test_generate_keyword_mode_task_without_ai_criteria(api_client):

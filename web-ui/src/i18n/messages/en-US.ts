@@ -199,6 +199,7 @@ const enUS = {
       avgPrice: 'Average',
       medianPrice: 'Median',
       minPrice: 'Daily Min',
+      minTrend: 'Min Price Trend',
       dipHeader: 'Daily Min Price Curve',
       fullHeader: 'Daily Price Curve',
       noTrend: 'No trend data to render yet',
@@ -333,6 +334,7 @@ const enUS = {
   tasks: {
     title: 'Tasks',
     startAll: 'Start All',
+    startWithoutDataToday: 'Start Tasks Without Data Today',
     stopAll: 'Stop All',
     toasts: {
       created: 'Task created successfully.',
@@ -349,6 +351,8 @@ const enUS = {
       notFound: 'Task to delete was not found.',
       progressFailed: 'Failed to fetch task progress.',
       startAllDone: 'All runnable tasks have been queued.',
+      startWithoutDataTodayDone: '{count} tasks without data today were queued.',
+      noTasksWithoutDataToday: 'There are no runnable tasks without data today.',
       stopAllDone: 'All tasks stopped and queue cleared.',
     },
     createDialog: { trigger: '+ New Task', title: 'Create Monitoring Task (AI or Keyword)', submit: 'Create Task', submitting: 'Submitting...' },
@@ -479,6 +483,7 @@ const enUS = {
       enable: 'Enable',
       disable: 'Disable',
       notifyHint: 'Whether matching items are pushed to notifications.',
+      aiTitleScreeningHint: 'Whether AI screens listing titles before detail fetching.',
       maxPagesHint: 'Maximum search result pages per run (1-50).',
       maxPagesError: 'Enter an integer between 1 and 50',
       pagesUnit: '{n} pages',

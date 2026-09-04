@@ -11,17 +11,23 @@ interface TrendPoint {
 }
 
 type ChartMode = 'full' | 'min-only'
+type TooltipSize = 'default' | 'large'
 
 const props = withDefaults(
   defineProps<{
     points: TrendPoint[]
     mode?: ChartMode
     height?: number
+    tooltipSize?: TooltipSize
   }>(),
-  { mode: 'full', height: 240 },
+  { mode: 'full', height: 240, tooltipSize: 'default' },
 )
 const { t } = useI18n()
 const isMinOnly = computed(() => props.mode === 'min-only')
+const showAvg = ref(false)
+const showMedian = ref(false)
+const showMin = ref(true)
+const showMinTrend = ref(true)
 
 const chartWidth = 720
 const chartHeight = computed(() => props.height)
@@ -36,16 +42,20 @@ const validPoints = computed(() => {
     return props.points.filter((point) => typeof point.min_price === 'number')
   }
   return props.points.filter(
-    (point) => point.avg_price !== null && point.avg_price !== undefined,
+    (point) => [point.avg_price, point.median_price, point.min_price].some(
+      (value) => typeof value === 'number',
+    ),
   )
 })
 
 const valueRange = computed(() => {
-  const values = isMinOnly.value
-    ? validPoints.value.map((p) => p.min_price).filter((v): v is number => typeof v === 'number')
-    : validPoints.value
-        .flatMap((p) => [p.avg_price, p.median_price, p.min_price, p.max_price])
-        .filter((v): v is number => typeof v === 'number')
+  const values = validPoints.value
+    .flatMap((point) => [
+      ...(!isMinOnly.value && showAvg.value ? [point.avg_price] : []),
+      ...(!isMinOnly.value && showMedian.value ? [point.median_price] : []),
+      ...(showMin.value || showMinTrend.value ? [point.min_price] : []),
+    ])
+    .filter((value): value is number => typeof value === 'number')
   if (values.length === 0) return { min: 0, max: 1 }
   const min = Math.min(...values)
   const max = Math.max(...values)
@@ -87,6 +97,33 @@ function buildPath(values: Array<number | null>) {
     .join(' ')
 }
 
+function buildSmoothPath(values: Array<number | null>) {
+  const coordinates = values
+    .map((value, index) =>
+      typeof value === 'number'
+        ? { x: resolveX(index), y: resolveY(value) }
+        : null,
+    )
+    .filter((point): point is { x: number; y: number } => point !== null)
+  if (coordinates.length === 0) return ''
+  const first = coordinates[0]!
+  if (coordinates.length === 1) return `M ${first.x} ${first.y}`
+
+  let path = `M ${first.x} ${first.y}`
+  for (let index = 0; index < coordinates.length - 1; index += 1) {
+    const previous = coordinates[Math.max(0, index - 1)]!
+    const current = coordinates[index]!
+    const next = coordinates[index + 1]!
+    const following = coordinates[Math.min(coordinates.length - 1, index + 2)]!
+    const control1X = current.x + (next.x - previous.x) / 6
+    const control1Y = current.y + (next.y - previous.y) / 6
+    const control2X = next.x - (following.x - current.x) / 6
+    const control2Y = next.y - (following.y - current.y) / 6
+    path += ` C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${next.x} ${next.y}`
+  }
+  return path
+}
+
 const avgPath = computed(() =>
   isMinOnly.value ? '' : buildPath(validPoints.value.map((p) => p.avg_price)),
 )
@@ -96,6 +133,17 @@ const medianPath = computed(() =>
 const minPath = computed(() =>
   buildPath(validPoints.value.map((p) => (typeof p.min_price === 'number' ? p.min_price : null))),
 )
+const minTrendValues = computed(() => {
+  const values = validPoints.value.map((point) => point.min_price)
+  return values.map((value, index) => {
+    if (typeof value !== 'number') return null
+    const windowValues = values
+      .slice(Math.max(0, index - 1), Math.min(values.length, index + 2))
+      .filter((candidate): candidate is number => typeof candidate === 'number')
+    return windowValues.reduce((sum, candidate) => sum + candidate, 0) / windowValues.length
+  })
+})
+const minTrendPath = computed(() => buildSmoothPath(minTrendValues.value))
 const areaPath = computed(() => {
   if (!avgPath.value || validPoints.value.length === 0) return ''
   const firstX = resolveX(0)
@@ -103,30 +151,16 @@ const areaPath = computed(() => {
   return `${avgPath.value} L ${lastX} ${plotBottom} L ${firstX} ${plotBottom} Z`
 })
 
-function highValue(point: TrendPoint): number | null {
-  if (isMinOnly.value) {
-    return typeof point.min_price === 'number' ? point.min_price : null
-  }
-  if (typeof point.max_price === 'number') return point.max_price
-  if (typeof point.avg_price === 'number') return point.avg_price
-  return null
-}
-
-function lowValue(point: TrendPoint): number | null {
-  if (isMinOnly.value) {
-    return typeof point.min_price === 'number' ? point.min_price : null
-  }
-  if (typeof point.min_price === 'number') return point.min_price
-  if (typeof point.avg_price === 'number') return point.avg_price
-  return null
+function minCurveValue(point: TrendPoint): number | null {
+  return typeof point.min_price === 'number' ? point.min_price : null
 }
 
 const highPoint = computed<{ index: number; point: TrendPoint } | null>(() => {
   let best: { index: number; point: TrendPoint } | null = null
   validPoints.value.forEach((point, index) => {
-    const value = highValue(point)
+    const value = minCurveValue(point)
     if (value === null) return
-    const bestValue = best ? highValue(best.point) : null
+    const bestValue = best ? minCurveValue(best.point) : null
     if (bestValue === null || value > bestValue) best = { index, point }
   })
   return best
@@ -134,9 +168,9 @@ const highPoint = computed<{ index: number; point: TrendPoint } | null>(() => {
 const lowPoint = computed<{ index: number; point: TrendPoint } | null>(() => {
   let best: { index: number; point: TrendPoint } | null = null
   validPoints.value.forEach((point, index) => {
-    const value = lowValue(point)
+    const value = minCurveValue(point)
     if (value === null) return
-    const bestValue = best ? lowValue(best.point) : null
+    const bestValue = best ? minCurveValue(best.point) : null
     if (bestValue === null || value < bestValue) best = { index, point }
   })
   return best
@@ -147,8 +181,14 @@ const hoverIndex = ref<number | null>(null)
 const hoverPoint = computed(() =>
   hoverIndex.value === null ? null : (validPoints.value[hoverIndex.value] ?? null),
 )
-const tipWidth = 220
-const tipHeight = 140
+const isLargeTooltip = computed(() => props.tooltipSize === 'large')
+const tipWidth = computed(() => (isLargeTooltip.value ? 280 : 220))
+const tipHeight = computed(() => (isLargeTooltip.value ? 164 : 140))
+const tipTitleSize = computed(() => (isLargeTooltip.value ? 17 : 14))
+const tipTextSize = computed(() => (isLargeTooltip.value ? 16 : 13))
+const tipLineY = computed(() =>
+  isLargeTooltip.value ? [54, 80, 106, 132] : [46, 68, 90, 112],
+)
 function onMove(e: MouseEvent) {
   const svg = svgRef.value
   if (!svg || validPoints.value.length === 0) return
@@ -182,7 +222,7 @@ function onLeave() {
 }
 function tipX() {
   if (hoverIndex.value === null) return 4
-  return Math.max(4, Math.min(resolveX(hoverIndex.value) + 10, chartWidth - tipWidth - 4))
+  return Math.max(4, Math.min(resolveX(hoverIndex.value) + 10, chartWidth - tipWidth.value - 4))
 }
 function fmt(v: number | null | undefined) {
   return typeof v === 'number' ? `¥${v}` : '—'
@@ -193,26 +233,70 @@ function fmt(v: number | null | undefined) {
   <div class="app-surface-subtle p-4">
     <div class="mb-1 flex flex-col gap-3 text-xs uppercase tracking-[0.22em] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
       <span>{{ isMinOnly ? t('results.chart.dipHeader') : t('results.chart.fullHeader') }}</span>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2">
         <template v-if="isMinOnly">
-          <span class="inline-flex items-center gap-1">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
+            :class="showMin ? 'opacity-100' : 'opacity-35 line-through'"
+            :aria-pressed="showMin"
+            @click="showMin = !showMin"
+          >
             <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
             {{ t('results.chart.minPrice') }}
-          </span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
+            :class="showMinTrend ? 'opacity-100' : 'opacity-35 line-through'"
+            :aria-pressed="showMinTrend"
+            @click="showMinTrend = !showMinTrend"
+          >
+            <span class="h-1 w-4 rounded-full bg-violet-600" />
+            {{ t('results.chart.minTrend') }}
+          </button>
         </template>
         <template v-else>
-          <span class="inline-flex items-center gap-1">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
+            :class="showAvg ? 'opacity-100' : 'opacity-35 line-through'"
+            :aria-pressed="showAvg"
+            @click="showAvg = !showAvg"
+          >
             <span class="h-2.5 w-2.5 rounded-full bg-sky-600" />
             {{ t('results.chart.avgPrice') }}
-          </span>
-          <span class="inline-flex items-center gap-1">
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
+            :class="showMedian ? 'opacity-100' : 'opacity-35 line-through'"
+            :aria-pressed="showMedian"
+            @click="showMedian = !showMedian"
+          >
             <span class="h-2.5 w-2.5 rounded-full bg-amber-500" />
             {{ t('results.chart.medianPrice') }}
-          </span>
-          <span class="inline-flex items-center gap-1">
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
+            :class="showMin ? 'opacity-100' : 'opacity-35 line-through'"
+            :aria-pressed="showMin"
+            @click="showMin = !showMin"
+          >
             <span class="h-2.5 w-2.5 rounded-full bg-emerald-600" />
             {{ t('results.chart.minPrice') }}
-          </span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-opacity"
+            :class="showMinTrend ? 'opacity-100' : 'opacity-35 line-through'"
+            :aria-pressed="showMinTrend"
+            @click="showMinTrend = !showMinTrend"
+          >
+            <span class="h-1 w-4 rounded-full bg-violet-600" />
+            {{ t('results.chart.minTrend') }}
+          </button>
         </template>
       </div>
     </div>
@@ -255,18 +339,28 @@ function fmt(v: number | null | undefined) {
           />
         </g>
 
-        <path v-if="!isMinOnly" :d="areaPath" fill="url(#avg-area-fill)" />
-        <path v-if="!isMinOnly" :d="avgPath" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round" />
-        <path v-if="!isMinOnly" :d="medianPath" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round" />
-        <path :d="minPath" fill="none" stroke="#059669" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round" />
+        <path v-if="!isMinOnly && showAvg" :d="areaPath" fill="url(#avg-area-fill)" />
+        <path v-if="!isMinOnly && showAvg" :d="avgPath" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round" />
+        <path v-if="!isMinOnly && showMedian" :d="medianPath" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round" />
+        <path v-if="showMin" :d="minPath" fill="none" stroke="#059669" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round" />
+        <path
+          v-if="showMinTrend"
+          :d="minTrendPath"
+          fill="none"
+          stroke="#7c3aed"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          opacity="0.9"
+        />
 
         <g v-for="(point, index) in validPoints" :key="point.day">
           <template v-if="!isMinOnly">
-            <circle :cx="resolveX(index)" :cy="resolveY(point.avg_price as number)" r="5" fill="#0284c7" />
-            <circle :cx="resolveX(index)" :cy="resolveY(point.median_price as number)" r="4" fill="#f59e0b" />
+            <circle v-if="showAvg && typeof point.avg_price === 'number'" :cx="resolveX(index)" :cy="resolveY(point.avg_price)" r="5" fill="#0284c7" />
+            <circle v-if="showMedian && typeof point.median_price === 'number'" :cx="resolveX(index)" :cy="resolveY(point.median_price)" r="4" fill="#f59e0b" />
           </template>
           <circle
-            v-if="typeof point.min_price === 'number'"
+            v-if="showMin && typeof point.min_price === 'number'"
             :cx="resolveX(index)"
             :cy="resolveY(point.min_price)"
             r="3.5"
@@ -283,10 +377,10 @@ function fmt(v: number | null | undefined) {
           </text>
         </g>
 
-        <g v-if="highPoint">
+        <g v-if="highPoint && (showMin || showMinTrend)">
           <circle
             :cx="resolveX(highPoint.index)"
-            :cy="resolveY(highValue(highPoint.point) as number)"
+            :cy="resolveY(minCurveValue(highPoint.point) as number)"
             r="7"
             fill="none"
             stroke="#e11d48"
@@ -294,20 +388,20 @@ function fmt(v: number | null | undefined) {
           />
           <text
             :x="labelX(highPoint.index)"
-            :y="resolveY(highValue(highPoint.point) as number) - 14"
+            :y="resolveY(minCurveValue(highPoint.point) as number) - 14"
             :text-anchor="labelAnchor(highPoint.index)"
             fill="#e11d48"
             font-size="13"
             font-weight="600"
           >
-            {{ t('results.chart.highMark', { price: highValue(highPoint.point) }) }}
+            {{ t('results.chart.highMark', { price: minCurveValue(highPoint.point) }) }}
           </text>
         </g>
 
-        <g v-if="lowPoint && lowPoint.index !== highPoint?.index">
+        <g v-if="lowPoint && (showMin || showMinTrend) && lowPoint.index !== highPoint?.index">
           <circle
             :cx="resolveX(lowPoint.index)"
-            :cy="resolveY(lowValue(lowPoint.point) as number)"
+            :cy="resolveY(minCurveValue(lowPoint.point) as number)"
             r="7"
             fill="none"
             stroke="#16a34a"
@@ -315,13 +409,13 @@ function fmt(v: number | null | undefined) {
           />
           <text
             :x="labelX(lowPoint.index)"
-            :y="resolveY(lowValue(lowPoint.point) as number) + 20"
+            :y="resolveY(minCurveValue(lowPoint.point) as number) + 20"
             :text-anchor="labelAnchor(lowPoint.index)"
             fill="#16a34a"
             font-size="13"
             font-weight="600"
           >
-            {{ t('results.chart.lowMark', { price: lowValue(lowPoint.point) }) }}
+            {{ t('results.chart.lowMark', { price: minCurveValue(lowPoint.point) }) }}
           </text>
         </g>
 
@@ -336,12 +430,12 @@ function fmt(v: number | null | undefined) {
             stroke-dasharray="3 3"
           />
           <g :transform="`translate(${tipX()}, ${plotTop})`">
-            <rect :width="tipWidth" :height="tipHeight" rx="8" fill="rgba(15,23,42,0.94)" />
-            <text x="12" y="22" fill="#e2e8f0" font-size="14" font-weight="700">{{ hoverPoint.day }}</text>
-            <text x="12" y="46" fill="#7dd3fc" font-size="13">均 {{ fmt(hoverPoint.avg_price) }}</text>
-            <text x="12" y="68" fill="#fcd34d" font-size="13">中 {{ fmt(hoverPoint.median_price) }}</text>
-            <text x="12" y="90" fill="#6ee7b7" font-size="13">低 {{ fmt(hoverPoint.min_price) }}</text>
-            <text x="12" y="112" fill="#fca5a5" font-size="13">高 {{ fmt(hoverPoint.max_price) }}</text>
+            <rect :width="tipWidth" :height="tipHeight" rx="10" fill="rgba(15,23,42,0.94)" />
+            <text x="14" y="26" fill="#e2e8f0" :font-size="tipTitleSize" font-weight="700">{{ hoverPoint.day }}</text>
+            <text v-if="!isMinOnly && showAvg" x="14" :y="tipLineY[0]" fill="#7dd3fc" :font-size="tipTextSize">均 {{ fmt(hoverPoint.avg_price) }}</text>
+            <text v-if="!isMinOnly && showMedian" x="14" :y="tipLineY[1]" fill="#fcd34d" :font-size="tipTextSize">中 {{ fmt(hoverPoint.median_price) }}</text>
+            <text v-if="showMin || showMinTrend" x="14" :y="tipLineY[2]" fill="#6ee7b7" :font-size="tipTextSize">低 {{ fmt(hoverPoint.min_price) }}</text>
+            <text x="14" :y="tipLineY[3]" fill="#fca5a5" :font-size="tipTextSize">高 {{ fmt(hoverPoint.max_price) }}</text>
           </g>
         </g>
       </svg>

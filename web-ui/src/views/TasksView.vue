@@ -34,6 +34,7 @@ const {
   startTask,
   stopTask,
   startAll,
+  startWithoutDataToday,
   stopAll,
   batchUpdateTasks,
   selectedTaskIds,
@@ -57,6 +58,7 @@ const isDeleteDialogOpen = ref(false)
 const taskToDeleteId = ref<number | null>(null)
 const accountOptions = ref<AccountItem[]>([])
 const isBatchEditOpen = ref(false)
+const isStartingWithoutDataToday = ref(false)
 
 const taskToDelete = computed(() => {
   if (taskToDeleteId.value === null) return null
@@ -227,6 +229,26 @@ async function handleStartAll() {
     })
   }
 }
+async function handleStartWithoutDataToday() {
+  isStartingWithoutDataToday.value = true
+  try {
+    const result = await startWithoutDataToday()
+    toast({
+      title: t('tasks.toasts.startWithoutDataTodayDone', { count: result.enqueued }),
+      description: result.enqueued === 0
+        ? t('tasks.toasts.noTasksWithoutDataToday')
+        : undefined,
+    })
+  } catch (e) {
+    toast({
+      title: t('tasks.toasts.startFailed'),
+      description: (e as Error).message,
+      variant: 'destructive',
+    })
+  } finally {
+    isStartingWithoutDataToday.value = false
+  }
+}
 async function handleStopAll() {
   try {
     await stopAll()
@@ -250,6 +272,7 @@ function handleToggleSelectAll(checked: boolean) {
 
 async function handleBatchSubmit(updates: {
   notify_enabled?: boolean | null
+  ai_title_screening?: boolean | null
   max_pages?: number | null
   new_publish_option?: string | null
 }) {
@@ -319,6 +342,15 @@ onMounted(fetchAccountOptions)
       </div>
 
       <div class="ml-auto flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          class="xy-btn-outline h-9 text-[13px]"
+          :disabled="!hasRunnableTasks || isStartingWithoutDataToday"
+          @click="handleStartWithoutDataToday"
+        >
+          <Play class="h-3.5 w-3.5" />
+          {{ t('tasks.startWithoutDataToday') }}
+        </button>
         <button
           type="button"
           class="xy-btn-outline h-9 text-[13px]"

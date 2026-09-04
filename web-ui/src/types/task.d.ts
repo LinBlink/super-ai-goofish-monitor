@@ -64,9 +64,10 @@ export interface TaskCreateResponse {
 // For PATCH requests, all fields are optional
 export type TaskUpdate = Partial<Omit<Task, 'id' | 'next_run_at'>>;
 
-// 批量修改：仅支持 通知推送 / 搜索页数 / 新发布范围
+// 批量修改：支持通知推送 / AI 标题预筛 / 搜索页数 / 新发布范围
 export interface TaskBatchUpdate {
   notify_enabled?: boolean | null
+  ai_title_screening?: boolean | null
   max_pages?: number | null
   new_publish_option?: string | null
 }

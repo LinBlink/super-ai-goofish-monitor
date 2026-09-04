@@ -116,6 +116,8 @@ function formatRelativeDay(days: number) {
       <PriceTrendChart
         :points="trendPoints"
         :height="200"
+        mode="min-only"
+        tooltip-size="large"
       />
     </div>
 

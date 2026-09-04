@@ -229,6 +229,18 @@ export function useTasks() {
     }
   }
 
+  async function startWithoutDataToday() {
+    error.value = null
+    try {
+      const result = await taskApi.startTasksWithoutDataToday()
+      await fetchQueue()
+      return result
+    } catch (e) {
+      if (e instanceof Error) error.value = e
+      throw e
+    }
+  }
+
   async function stopAll() {
     error.value = null
     try {
@@ -281,6 +293,7 @@ export function useTasks() {
     startTask,
     stopTask,
     startAll,
+    startWithoutDataToday,
     stopAll,
     batchUpdateTasks,
     toggleTaskSelection,

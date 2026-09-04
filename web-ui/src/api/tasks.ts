@@ -60,6 +60,17 @@ export async function startAllTasks(): Promise<{ enqueued: number; skipped: numb
   return await http('/api/tasks/start-all', { method: 'POST' })
 }
 
+export interface StartWithoutDataTodayResponse {
+  date: string
+  enqueued: number
+  skipped_with_data: number
+  skipped_unavailable: number
+}
+
+export async function startTasksWithoutDataToday(): Promise<StartWithoutDataTodayResponse> {
+  return await http('/api/tasks/start-without-data-today', { method: 'POST' })
+}
+
 export async function stopAllTasks(): Promise<void> {
   await http('/api/tasks/stop-all', { method: 'POST' })
 }

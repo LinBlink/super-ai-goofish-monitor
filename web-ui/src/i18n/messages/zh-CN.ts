@@ -201,6 +201,7 @@ const zhCN = {
       avgPrice: '均价',
       medianPrice: '中位数',
       minPrice: '每日最低价',
+      minTrend: '最低价趋势',
       dipHeader: '每日最低价曲线',
       fullHeader: '每日价格曲线',
       noTrend: '暂无可绘制的趋势数据',
@@ -335,6 +336,7 @@ const zhCN = {
   tasks: {
     title: '任务管理',
     startAll: '全部开始',
+    startWithoutDataToday: '启动今日无数据的任务',
     stopAll: '全部停止',
     toasts: {
       created: '任务创建成功',
@@ -351,6 +353,8 @@ const zhCN = {
       notFound: '未找到要删除的任务',
       progressFailed: '任务进度获取失败',
       startAllDone: '已将所有可执行任务加入队列',
+      startWithoutDataTodayDone: '已将 {count} 个今日无数据任务加入队列',
+      noTasksWithoutDataToday: '当前没有需要启动的今日无数据任务。',
       stopAllDone: '已停止全部任务并清空队列',
     },
     createDialog: { trigger: '+ 创建新任务', title: '创建新监控任务（AI 或关键词）', submit: '创建任务', submitting: '提交中...' },
@@ -481,6 +485,7 @@ const zhCN = {
       enable: '开启',
       disable: '关闭',
       notifyHint: '命中商品是否推送通知。',
+      aiTitleScreeningHint: '抓取详情前是否使用 AI 预筛商品标题。',
       maxPagesHint: '每个任务执行时最多抓取的搜索结果页数（1-50）。',
       maxPagesError: '请输入 1-50 之间的整数',
       pagesUnit: '{n} 页',
