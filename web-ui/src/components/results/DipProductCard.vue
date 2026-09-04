@@ -97,17 +97,19 @@ function formatRelativeDay(days: number) {
       </div>
     </header>
 
-    <!-- 主体：左价格 / 右图�?-->
-    <div class="grid grid-cols-[auto_1fr] items-end gap-3 px-3 pb-3">
-      <div class="leading-none">
-        <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          {{ t('dashboard.deals.latestMinPrice') }}
-        </p>
-        <p class="mt-0.5 flex items-baseline gap-0.5">
-          <span class="xy-price-sign">¥</span>
-          <span class="xy-price text-[26px] tabular">{{ data.latest_min_price }}</span>
-        </p>
-        <p class="mt-1 text-[10px] text-slate-400 tabular">
+    <!-- 主体：价格 + 图表（上下排布，图表占满整行） -->
+    <div class="space-y-2 px-3 pb-3">
+      <div class="flex items-end justify-between gap-2">
+        <div class="leading-none">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            {{ t('dashboard.deals.latestMinPrice') }}
+          </p>
+          <p class="mt-0.5 flex items-baseline gap-0.5">
+            <span class="xy-price-sign">¥</span>
+            <span class="xy-price text-[26px] tabular">{{ data.latest_min_price }}</span>
+          </p>
+        </div>
+        <p class="text-[10px] text-slate-400 tabular">
           {{ t('dashboard.deals.highestLabel') }} ¥{{ data.highest_min_price }}
         </p>
       </div>
