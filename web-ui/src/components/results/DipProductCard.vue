@@ -117,7 +117,8 @@ function formatRelativeDay(days: number) {
         :points="trendPoints"
         :height="200"
         mode="min-only"
-        tooltip-size="large"
+        details-placement="below"
+        @click.stop
       />
     </div>
 

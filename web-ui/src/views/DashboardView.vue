@@ -213,7 +213,7 @@ void openLowestItem
             <PriceTrendChart
               :points="item.history_daily_trend"
               :height="280"
-              tooltip-size="large"
+              details-placement="below"
             />
           </div>
           <div class="mt-2 flex justify-end">

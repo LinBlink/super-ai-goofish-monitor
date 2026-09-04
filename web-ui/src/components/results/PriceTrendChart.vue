@@ -12,6 +12,7 @@ interface TrendPoint {
 
 type ChartMode = 'full' | 'min-only'
 type TooltipSize = 'default' | 'large'
+type DetailsPlacement = 'overlay' | 'below'
 
 const props = withDefaults(
   defineProps<{
@@ -19,8 +20,9 @@ const props = withDefaults(
     mode?: ChartMode
     height?: number
     tooltipSize?: TooltipSize
+    detailsPlacement?: DetailsPlacement
   }>(),
-  { mode: 'full', height: 240, tooltipSize: 'default' },
+  { mode: 'full', height: 240, tooltipSize: 'default', detailsPlacement: 'overlay' },
 )
 const { t } = useI18n()
 const isMinOnly = computed(() => props.mode === 'min-only')
@@ -225,6 +227,8 @@ const hoverIndex = ref<number | null>(null)
 const hoverPoint = computed(() =>
   hoverIndex.value === null ? null : (validPoints.value[hoverIndex.value] ?? null),
 )
+const isDetailsBelow = computed(() => props.detailsPlacement === 'below')
+const detailPoint = computed(() => hoverPoint.value ?? validPoints.value[validPoints.value.length - 1] ?? null)
 const isLargeTooltip = computed(() => props.tooltipSize === 'large')
 const tipWidth = computed(() => (isLargeTooltip.value ? 280 : 220))
 const tipHeight = computed(() => (isLargeTooltip.value ? 164 : 140))
@@ -262,7 +266,7 @@ function onMove(e: MouseEvent) {
   hoverIndex.value = best
 }
 function onLeave() {
-  hoverIndex.value = null
+  if (!isDetailsBelow.value) hoverIndex.value = null
 }
 function tipX() {
   if (hoverIndex.value === null) return 4
@@ -361,6 +365,7 @@ function fmt(v: number | null | undefined) {
         role="img"
         :aria-label="t('results.chart.noTrend')"
         @mousemove="onMove"
+        @pointerdown="onMove"
         @mouseleave="onLeave"
       >
         <defs>
@@ -464,7 +469,7 @@ function fmt(v: number | null | undefined) {
           </text>
         </g>
 
-        <g v-if="hoverIndex !== null && hoverPoint">
+        <g v-if="!isDetailsBelow && hoverIndex !== null && hoverPoint">
           <line
             :x1="resolveX(hoverIndex)"
             :x2="resolveX(hoverIndex)"
@@ -484,6 +489,31 @@ function fmt(v: number | null | undefined) {
           </g>
         </g>
       </svg>
+
+      <div
+        v-if="isDetailsBelow && detailPoint"
+        class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-[11px] sm:grid-cols-4"
+      >
+        <div class="col-span-2 font-bold tabular-nums text-slate-600 sm:col-span-4">
+          {{ detailPoint.day }}
+        </div>
+        <div v-if="!isMinOnly" class="flex items-center justify-between gap-2 text-slate-500">
+          <span>{{ t('results.chart.avgPrice') }}</span>
+          <strong class="tabular-nums text-sky-700">{{ fmt(detailPoint.avg_price) }}</strong>
+        </div>
+        <div v-if="!isMinOnly" class="flex items-center justify-between gap-2 text-slate-500">
+          <span>{{ t('results.chart.medianPrice') }}</span>
+          <strong class="tabular-nums text-amber-700">{{ fmt(detailPoint.median_price) }}</strong>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-500">
+          <span>{{ t('results.chart.minPrice') }}</span>
+          <strong class="tabular-nums text-emerald-700">{{ fmt(detailPoint.min_price) }}</strong>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-500">
+          <span>{{ t('results.chart.maxPrice') }}</span>
+          <strong class="tabular-nums text-rose-700">{{ fmt(detailPoint.max_price) }}</strong>
+        </div>
+      </div>
     </div>
   </div>
 </template>
