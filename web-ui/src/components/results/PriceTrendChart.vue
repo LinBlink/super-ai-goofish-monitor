@@ -90,6 +90,23 @@ const valueRange = computed(() => {
   return { min, max }
 })
 
+const dateTickIndices = computed(() => {
+  const pointCount = validPoints.value.length
+  if (pointCount === 0) return new Set<number>()
+
+  // Reserve enough horizontal room for an MM-DD label and distribute the
+  // selected dates across the complete range, always retaining both ends.
+  const maxTickCount = Math.max(2, Math.floor((chartWidth.value - paddingX * 2) / 64))
+  const tickCount = Math.min(pointCount, maxTickCount)
+  if (tickCount === 1) return new Set([0])
+
+  return new Set(
+    Array.from({ length: tickCount }, (_, index) =>
+      Math.round((index * (pointCount - 1)) / (tickCount - 1)),
+    ),
+  )
+})
+
 function resolveX(index: number) {
   if (validPoints.value.length <= 1) return chartWidth.value / 2
   const usableWidth = chartWidth.value - paddingX * 2
@@ -394,6 +411,7 @@ function fmt(v: number | null | undefined) {
             fill="#059669"
           />
           <text
+            v-if="dateTickIndices.has(index)"
             :x="resolveX(index)"
             :y="chartHeight - 6"
             text-anchor="middle"
