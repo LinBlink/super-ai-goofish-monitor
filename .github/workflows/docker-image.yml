@@ -1,10 +1,10 @@
-name: Docker Image CI on merge to master
+name: Publish Docker images
 
 on:
   workflow_dispatch:
   pull_request:
     types: [closed]
-    branches: ["master"]
+    branches: ["main", "master"]
 
 env:
   IMAGE_NAME: ai-goofish

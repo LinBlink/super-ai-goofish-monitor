@@ -59,13 +59,25 @@ cd super-ai-goofish-monitor
 cp .env.example .env
 vim .env   # fill in OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_MODEL_NAME, etc.
 docker compose up -d
+docker compose ps
 docker compose logs -f app
 ```
 
 - Default Web UI: `http://127.0.0.1:8000`
 - The image bundles Chromium — no browser installation on the host
-- Update image: `docker compose pull && docker compose up -d`
-- If you change `SERVER_PORT` in `.env`, update the `ports` mapping in `docker-compose.yaml` as well
+- `SERVER_PORT` in `.env` controls the host port; no Compose edit is required
+- Update the image: `docker compose pull && docker compose up -d --remove-orphans`
+- Build from the current source: `docker compose -f docker-compose.dev.yaml up -d --build`
+- Health check: `docker compose ps` should report `healthy`, or open `http://127.0.0.1:${SERVER_PORT:-8000}/health`
+
+On a first Linux deployment, if bind mounts report permission errors, grant the container user (UID/GID `1000:1000` by default) write access:
+
+```bash
+mkdir -p data state prompts jsonl logs images price_history
+sudo chown -R 1000:1000 data state prompts jsonl logs images price_history config.json .env
+```
+
+For production, change `WEB_USERNAME` / `WEB_PASSWORD`, restrict port 8000 to trusted networks, and regularly back up `.env`, `config.json`, `data/`, `state/`, and `prompts/`. Container shutdown allows up to 30 seconds for the scheduler and exiting jobs to clean up.
 
 Persistent directories:
 

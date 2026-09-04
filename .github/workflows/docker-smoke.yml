@@ -1,0 +1,61 @@
+name: Docker smoke test
+
+on:
+  pull_request:
+    branches: ["main", "master"]
+    paths:
+      - "Dockerfile*"
+      - "docker-compose*.yaml"
+      - ".dockerignore"
+      - "requirements-runtime.txt"
+      - "src/**"
+      - "web-ui/**"
+      - ".github/workflows/docker-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Compose files
+        run: |
+          cp .env.example .env
+          cp config.json.example config.json
+          docker compose config --quiet
+          docker compose -f docker-compose.dev.yaml config --quiet
+
+      - name: Build application image
+        run: docker build --tag ai-goofish-monitor:smoke .
+
+      - name: Start container
+        run: |
+          docker run --detach --name ai-goofish-smoke \
+            --publish 127.0.0.1:8000:8000 \
+            --env OPENAI_API_KEY=smoke-test \
+            --env OPENAI_BASE_URL=https://example.invalid/v1 \
+            --env OPENAI_MODEL_NAME=smoke-test \
+            ai-goofish-monitor:smoke
+
+      - name: Wait for healthy API
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health | grep --quiet '"status":"healthy"'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ai-goofish-smoke
+          exit 1
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs ai-goofish-smoke || true
+
+      - name: Remove test container
+        if: always()
+        run: docker rm --force ai-goofish-smoke || true

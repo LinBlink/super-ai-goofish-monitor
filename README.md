@@ -59,13 +59,25 @@ cd super-ai-goofish-monitor
 cp .env.example .env
 vim .env   # 填写 OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_MODEL_NAME 等必填项
 docker compose up -d
+docker compose ps
 docker compose logs -f app
 ```
 
 - 默认 Web UI：`http://127.0.0.1:8000`
 - 镜像内置 Chromium，无需宿主机再装浏览器
-- 更新镜像：`docker compose pull && docker compose up -d`
-- 修改了 `.env` 中的 `SERVER_PORT` 时，记得同步 `docker-compose.yaml` 的端口映射
+- `.env` 中的 `SERVER_PORT` 控制宿主机访问端口，无需修改 Compose 文件
+- 更新镜像：`docker compose pull && docker compose up -d --remove-orphans`
+- 从当前源码构建：`docker compose -f docker-compose.dev.yaml up -d --build`
+- 健康检查：`docker compose ps` 应显示 `healthy`，或访问 `http://127.0.0.1:${SERVER_PORT:-8000}/health`
+
+Linux 首次部署如果挂载目录出现权限错误，请让容器用户（默认 UID/GID `1000:1000`）拥有写权限：
+
+```bash
+mkdir -p data state prompts jsonl logs images price_history
+sudo chown -R 1000:1000 data state prompts jsonl logs images price_history config.json .env
+```
+
+生产环境建议修改 `WEB_USERNAME` / `WEB_PASSWORD`，只允许可信网络访问 8000 端口，并定期备份 `.env`、`config.json`、`data/`、`state/` 与 `prompts/`。容器停止时会等待最多 30 秒，让调度器和正在退出的任务完成清理。
 
 持久化目录：
 

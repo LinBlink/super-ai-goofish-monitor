@@ -1,13 +1,17 @@
+# syntax=docker/dockerfile:1.7
+
 # Stage 1: Build the Vue application
 FROM node:22-alpine AS frontend-builder
 WORKDIR /web-ui
 COPY web-ui/package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY web-ui/ .
 RUN npm run build
 
 # Stage 2: Build the python environment with dependencies
 FROM python:3.11-slim-bookworm AS builder
+
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
 # 设置环境变量以防止交互式提示
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -17,7 +21,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # 创建虚拟环境并安装 Python 运行时依赖
 RUN python3 -m venv $VIRTUAL_ENV
 COPY requirements-runtime.txt .
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-runtime.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --index-url "$PIP_INDEX_URL" -r requirements-runtime.txt
 
 # Stage 3: Create the final, lean image
 FROM python:3.11-slim-bookworm
