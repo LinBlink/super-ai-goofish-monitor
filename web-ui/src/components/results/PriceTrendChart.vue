@@ -153,7 +153,19 @@ function onMove(e: MouseEvent) {
   const svg = svgRef.value
   if (!svg || validPoints.value.length === 0) return
   const rect = svg.getBoundingClientRect()
-  const x = ((e.clientX - rect.left) / rect.width) * chartWidth
+  const vbAspect = chartWidth / chartHeight.value
+  const svgAspect = rect.width / rect.height
+  let renderedWidth: number
+  let offsetX: number
+  if (svgAspect > vbAspect) {
+    const renderedHeight = rect.height
+    renderedWidth = renderedHeight * vbAspect
+    offsetX = (rect.width - renderedWidth) / 2
+  } else {
+    renderedWidth = rect.width
+    offsetX = 0
+  }
+  const x = ((e.clientX - rect.left - offsetX) / renderedWidth) * chartWidth
   let best = 0
   let bestDist = Infinity
   validPoints.value.forEach((_, i) => {
@@ -218,7 +230,6 @@ function fmt(v: number | null | undefined) {
         :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
         :style="{ height: chartHeight + 'px' }"
         class="w-full"
-        preserveAspectRatio="none"
         role="img"
         :aria-label="t('results.chart.noTrend')"
         @mousemove="onMove"
