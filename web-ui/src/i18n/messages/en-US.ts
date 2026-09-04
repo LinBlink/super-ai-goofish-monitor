@@ -199,6 +199,7 @@ const enUS = {
       avgPrice: 'Average',
       medianPrice: 'Median',
       minPrice: 'Daily Min',
+      maxPrice: 'Daily Max',
       minTrend: 'Min Price Trend',
       dipHeader: 'Daily Min Price Curve',
       fullHeader: 'Daily Price Curve',
