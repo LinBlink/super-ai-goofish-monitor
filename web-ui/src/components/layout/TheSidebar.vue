@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import {
   LayoutDashboard,
   ListTodo,
@@ -11,12 +11,10 @@ import {
 } from 'lucide-vue-next'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useI18n } from 'vue-i18n'
-import LightningFishIcon from '@/components/icons/LightningFishIcon.vue'
 
 const emit = defineEmits<{
   (event: 'navigate'): void
 }>()
-const route = useRoute()
 const { isConnected } = useWebSocket()
 const { t } = useI18n()
 
@@ -32,27 +30,11 @@ const navItems = computed(() => [
 const connectionLabel = computed(() => (
   isConnected.value ? t('sidebar.backendConnected') : t('sidebar.backendConnecting')
 ))
-const isMobileLayout = computed(() => route.meta?.layout === 'mobile')
+
 </script>
 
 <template>
   <nav class="flex h-full flex-col">
-    <RouterLink
-      v-if="!isMobileLayout"
-      to="/dashboard"
-      class="mb-4 flex items-center gap-2 rounded-2xl px-2 py-1.5"
-    >
-      <span
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-        style="background-color: hsl(56 100% 52%)"
-      >
-        <LightningFishIcon :size="22" />
-      </span>
-      <span class="truncate text-base font-black tracking-tight text-foreground">
-        {{ t('header.brandName') }}
-      </span>
-    </RouterLink>
-
     <ul class="space-y-1">
       <li v-for="item in navItems" :key="item.to">
         <RouterLink

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResultItem } from '@/types/result.d.ts'
 import {
@@ -58,6 +58,11 @@ const hiddenLabel = computed(() => {
   if (props.item._hidden_reason === 'expired') return t('results.card.expired')
   return t('results.card.hidden')
 })
+
+const reasonText = computed(() => (ai?.reason ? ai.reason.trim() : ''))
+const hasReason = computed(() => reasonText.value.length > 0)
+const isLongReason = computed(() => reasonText.value.length > 60)
+const isReasonExpanded = ref(false)
 </script>
 
 <template>
@@ -116,7 +121,7 @@ const hiddenLabel = computed(() => {
         >¥{{ info['商品原价'] }}</span>
       </div>
 
-      <!-- AI 推荐状�?-->
+      <!-- AI 推荐状�?-->
       <div
         v-if="ai"
         class="flex items-center justify-between rounded-lg px-1.5 py-1 text-[10px] font-semibold"
@@ -127,6 +132,24 @@ const hiddenLabel = computed(() => {
           <span class="truncate">{{ recommendationStatus.label }}</span>
         </span>
         <span class="tabular">{{ matchScore }}%</span>
+      </div>
+
+      <!-- AI 推荐理由 -->
+      <div v-if="hasReason" class="space-y-0.5">
+        <p
+          class="text-[11px] leading-relaxed text-slate-600"
+          :class="isReasonExpanded ? '' : 'line-clamp-2'"
+        >
+          {{ reasonText }}
+        </p>
+        <button
+          v-if="isLongReason"
+          type="button"
+          class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 active:text-slate-700"
+          @click.stop="isReasonExpanded = !isReasonExpanded"
+        >
+          {{ isReasonExpanded ? t('results.card.collapse') : t('results.card.expand') }}
+        </button>
       </div>
 
       <!-- 价格洞察 -->

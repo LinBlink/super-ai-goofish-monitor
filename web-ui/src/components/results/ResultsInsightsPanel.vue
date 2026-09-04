@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResultInsights } from '@/types/result.d.ts'
-import MinPriceChart from './MinPriceChart.vue'
+import PriceTrendChart from './PriceTrendChart.vue'
 import { formatDateTime } from '@/i18n'
 
 const props = defineProps<{
@@ -106,12 +106,8 @@ const latestSnapshotText = computed(() => {
       </p>
     </div>
 
-    <div v-if="(insights?.daily_trend?.length ?? 0) > 0" class="mt-2">
-      <MinPriceChart
-        :points="(insights?.daily_trend || []).map((p) => ({ day: p.day, min_price: p.min_price }))"
-        :height="80"
-        :width="600"
-      />
+    <div v-if="(insights?.daily_trend?.length ?? 0) > 1" class="mt-2">
+      <PriceTrendChart :points="insights?.daily_trend || []" :height="280" />
     </div>
   </section>
 </template>

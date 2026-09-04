@@ -583,6 +583,11 @@ def find_declining_dip_tasks(
                             if isinstance(point.get("avg_price"), (int, float))
                             else None
                         ),
+                        "max_price": (
+                            round(float(point["max_price"]), 2)
+                            if isinstance(point.get("max_price"), (int, float))
+                            else None
+                        ),
                         "sample_count": point["sample_count"],
                     }
                     for point in min_series

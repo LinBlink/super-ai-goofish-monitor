@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TrendingDown, MapPin, ExternalLink, Tag } from 'lucide-vue-next'
+import PriceTrendChart from './PriceTrendChart.vue'
+import type { DashboardDipTrendPoint } from '@/types/dashboard.d.ts'
 
 export interface DipProductCardData {
   task_id: number | null
@@ -13,7 +15,7 @@ export interface DipProductCardData {
   decline_days: number
   highest_min_price: number
   trend_points: number
-  trend: Array<{ day: string; min_price: number }>
+  trend: DashboardDipTrendPoint[]
   lowest_item: {
     item_id: string
     title: string
@@ -32,8 +34,23 @@ interface Props {
 const props = defineProps<Props>()
 const { t } = useI18n()
 
-const trendChartPoints = computed(() =>
-  props.data.trend.map((p) => ({ day: p.day, min_price: p.min_price })),
+const trendPoints = computed(() =>
+  props.data.trend.map((p) => {
+    const min = typeof p.min_price === 'number' ? p.min_price : null
+    const avg = typeof p.avg_price === 'number'
+      ? p.avg_price
+      : (min !== null ? min : null)
+    const max = typeof p.max_price === 'number'
+      ? p.max_price
+      : (avg !== null ? avg : null)
+    return {
+      day: p.day,
+      avg_price: avg,
+      median_price: null,
+      min_price: min,
+      max_price: max,
+    }
+  }),
 )
 
 const declineLabel = computed(() => {
@@ -57,7 +74,7 @@ function formatRelativeDay(days: number) {
   <article
     class="xy-card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-xy-hover"
   >
-    <!-- 头部：标�?+ 跌幅 -->
+    <!-- 头部：标�?+ 跌幅 -->
     <header class="flex items-start justify-between gap-2 p-3 pb-2">
       <div class="min-w-0 flex-1">
         <h3
@@ -80,7 +97,7 @@ function formatRelativeDay(days: number) {
       </div>
     </header>
 
-    <!-- 主体：左价格 / 右图�?-->
+    <!-- 主体：左价格 / 右图�?-->
     <div class="grid grid-cols-[auto_1fr] items-end gap-3 px-3 pb-3">
       <div class="leading-none">
         <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -94,13 +111,10 @@ function formatRelativeDay(days: number) {
           {{ t('dashboard.deals.highestLabel') }} ¥{{ data.highest_min_price }}
         </p>
       </div>
-      <MinPriceChart
-        v-if="trendChartPoints.length > 0"
-        :points="trendChartPoints"
-        :height="56"
-        :width="200"
-        :show-axis="true"
-        class="w-full"
+      <PriceTrendChart
+        v-if="trendPoints.length > 0"
+        :points="trendPoints"
+        :height="200"
       />
     </div>
 

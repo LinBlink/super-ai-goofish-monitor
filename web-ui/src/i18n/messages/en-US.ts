@@ -200,6 +200,7 @@ const enUS = {
       medianPrice: 'Median',
       minPrice: 'Daily Min',
       dipHeader: 'Daily Min Price Curve',
+      fullHeader: 'Daily Price Curve',
       noTrend: 'No trend data to render yet',
       aiSourceNote: 'Data source: only AI-recommended items are counted; other prices are excluded.',
       highMark: 'High ¥{price}',

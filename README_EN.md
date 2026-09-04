@@ -25,7 +25,7 @@ The upstream remote is kept as a reference (`upstream`) but every change ships f
 - **Multi-Model AI Fallback**: Configure multiple models in `System Settings → AI Model`. The first is primary, the rest are fallbacks. On API/network errors the primary automatically fails over to the next; each model can be tested individually.
 - **AI Call Hardening**: 429 → immediate failover to the next model; consecutive parse failures → immediate failover; service unreachable → per-call timeout (default 60s) + circuit breaker (default: 3 consecutive failures → 5-minute cooldown); vendor-specific "thinking-disable" parameters are auto-injected.
 - **Per-Channel Notification Toggles**: ntfy / WeCom / Bark / Telegram / Email (SMTP) / Webhook — each can be enabled independently.
-- **Price-Trend & Buy-the-Dip**: The dashboard surfaces "Persistent Drops — Buy-the-Dip Candidates" with total decline, current dip price, period high, and a mini price curve. Click to open the listing directly.
+- **Price-Trend & Buy-the-Dip**: The dashboard surfaces "Persistent Drops — Buy-the-Dip Candidates" with total decline, current dip price, period high, and a full per-card price trend chart (average, min-price line, high/low markers). Click to open the listing directly.
 - **Smart Result Sorting + Date Filter**: AI-recommended items float to the top; the rest are sorted by price ascending. A quick date filter (All / 1 day / 3 days / 7 days) sits next to it.
 - **Account & Proxy Rotation**: Multi-account pool with automatic switching on failure; proxy pool rotation further lowers the risk of being rate-limited.
 - **Batch Task Edit**: Update "notification push / search pages / fresh-listing window" for multiple selected tasks at once; unchanged fields keep their original values.
@@ -116,7 +116,7 @@ cd web-ui && npm install && npm run dev        # frontend dev server
 <summary>Dashboard</summary>
 
 - **Three stat cards**: total monitored tasks, tasks with price history, cumulative price-history samples.
-- **Persistent Drops — Buy-the-Dip Candidates**: scans every snapshot within a 30-day window, surfaces items whose last 3 prices are strictly decreasing **and** total decline ≥ 10%, ranked by decline magnitude. Each card shows the dip price, period high, snapshot count, and a mini price curve. Click to open the listing in a new tab.
+- **Persistent Drops — Buy-the-Dip Candidates**: scans every snapshot within a 30-day window, surfaces items whose last 3 prices are strictly decreasing **and** total decline ≥ 10%, ranked by decline magnitude. Each card embeds the same full PriceTrendChart used on the dashboard (average, min-price line, automatic high/low markers). Click to open the listing in a new tab.
 - **Latest Historical Average Price by Task**: per-task windowed average with a daily price-trend chart. Click to open the task's results page.
 - **System status**: realtime backend connection indicator at the bottom of the sidebar.
 
@@ -149,7 +149,7 @@ cd web-ui && npm install && npm run dev        # frontend dev server
 - Date-range quick filter: All / 1 day / 3 days / 7 days.
 - Filters: AI-only / keyword-only / include hidden.
 - Export CSV, delete single items or the entire result file.
-- Top **Price Trend Insight** panel shows current sample average, historical average, min / max / median, and a price curve.
+- Top **Price Trend Insight** panel uses the same full PriceTrendChart as the dashboard, rendering average / median / min-price lines with automatic high/low markers.
 
 </details>
 

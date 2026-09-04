@@ -66,6 +66,8 @@ export interface DashboardDipTrendPoint {
   day: string
   min_price: number
   avg_price: number | null
+  max_price: number | null
+  median_price?: number | null
   sample_count: number
 }
 

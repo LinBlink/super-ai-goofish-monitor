@@ -39,16 +39,21 @@ function isActive(tab: TabItem): boolean {
       <li v-for="tab in tabs" :key="tab.to" class="contents">
         <RouterLink
           :to="tab.to"
-          class="flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors"
-          :class="isActive(tab) ? 'text-brand-op' : 'text-slate-500 hover:text-slate-700'"
+          class="relative flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors"
+          :class="isActive(tab) ? 'text-primary' : 'text-slate-500 hover:text-slate-700'"
           :aria-label="t(tab.i18nKey)"
         >
+          <span
+            v-if="isActive(tab)"
+            class="absolute inset-x-6 top-0 h-0.5 rounded-full bg-primary"
+            aria-hidden="true"
+          ></span>
           <component
             :is="tab.icon"
             class="h-5 w-5"
-            :class="isActive(tab) ? 'text-brand-op' : 'text-slate-500'"
+            :class="isActive(tab) ? 'text-primary' : 'text-slate-500'"
           />
-          <span :class="isActive(tab) ? 'font-bold' : ''">{{ t(tab.i18nKey) }}</span>
+          <span :class="isActive(tab) ? 'font-bold text-slate-900' : ''">{{ t(tab.i18nKey) }}</span>
         </RouterLink>
       </li>
     </ul>

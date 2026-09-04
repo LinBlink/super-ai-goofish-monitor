@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDashboard } from '@/composables/useDashboard'
+import PriceTrendChart from '@/components/results/PriceTrendChart.vue'
 import {
   TrendingDown,
   Wallet,
@@ -123,7 +124,8 @@ void openLowestItem
     <!-- 持续下跌可抄�?-->
     <section>
       <header class="mb-2 flex items-center justify-between">
-        <h2 class="flex items-center gap-1.5 text-base font-black tracking-tight text-foreground">
+        <h2 class="flex items-center gap-2 text-base font-black tracking-tight text-foreground">
+          <span class="h-4 w-1.5 rounded-full bg-primary" />
           <TrendingDown class="h-4 w-4" style="color: hsl(var(--price))" />
           {{ t('dashboard.deals.title') }}
         </h2>
@@ -152,7 +154,8 @@ void openLowestItem
     <!-- 价格概览 -->
     <section v-if="taskSummaries.length > 0">
       <header class="mb-2 flex items-center justify-between">
-        <h2 class="flex items-center gap-1.5 text-base font-black tracking-tight text-foreground">
+        <h2 class="flex items-center gap-2 text-base font-black tracking-tight text-foreground">
+          <span class="h-4 w-1.5 rounded-full bg-primary" />
           <Wallet class="h-4 w-4 text-emerald-600" />
           {{ t('dashboard.priceOverview.title') }}
         </h2>
@@ -189,6 +192,13 @@ void openLowestItem
                 {{ t('dashboard.priceOverview.sampleLabel', { count: item.history_sample_count }) }}
               </p>
             </div>
+          </div>
+          <div
+            v-if="item.history_daily_trend && item.history_daily_trend.length > 1"
+            class="mt-2"
+            @click.stop
+          >
+            <PriceTrendChart :points="item.history_daily_trend" :height="280" />
           </div>
           <div class="mt-2 flex justify-end">
             <ArrowRight class="h-3.5 w-3.5 text-slate-400" />
