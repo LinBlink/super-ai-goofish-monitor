@@ -96,7 +96,7 @@ const levelOptions = [
 ]
 const parsedLogs = computed(() => {
   const lines = logs.value.split('\n')
-  if (lines.at(-1) === '') lines.pop()
+  if (lines[lines.length - 1] === '') lines.pop()
   return lines.map(parseLogLine)
 })
 const filteredLogLines = computed(() => {
