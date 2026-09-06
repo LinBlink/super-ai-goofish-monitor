@@ -84,6 +84,18 @@ export function useResults() {
     return filename.replace(/_full_data\.jsonl$/i, '').toLowerCase()
   }
 
+  function applyRouteFilters(query: typeof route.query) {
+    if (query.sort_by === 'price' || query.sort_by === 'crawl_time' || query.sort_by === 'publish_time' || query.sort_by === 'keyword_hit_count' || query.sort_by === 'smart') {
+      filters.sort_by = query.sort_by
+    }
+    if (query.sort_order === 'asc' || query.sort_order === 'desc') {
+      filters.sort_order = query.sort_order
+    }
+    if (query.ai_recommended_only === 'true' || query.ai_recommended_only === 'false') {
+      filters.ai_recommended_only = query.ai_recommended_only === 'true'
+    }
+  }
+
   // Methods
   async function fetchFiles() {
     try {
@@ -258,8 +270,9 @@ export function useResults() {
     if (value) localStorage.setItem('lastSelectedResultFile', value)
   })
   watch(
-    [() => route.query.file, files],
-    ([routeFile, currentFiles]) => {
+    [() => route.query.file, () => route.query.sort_by, () => route.query.sort_order, () => route.query.ai_recommended_only, files],
+    ([routeFile, _sortBy, _sortOrder, _aiOnly, currentFiles]) => {
+      applyRouteFilters(route.query)
       if (typeof routeFile !== 'string') return
       if (currentFiles.includes(routeFile)) {
         selectedFile.value = routeFile

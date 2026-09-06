@@ -34,9 +34,19 @@ const stats = computed(() => {
 function goTasks() {
   router.push({ name: 'Tasks', query: { create: '1' } })
 }
-function openTask(item: { filename: string | null }) {
+function openTask(item: { filename: string | null }, focusLowestPrice = false) {
   if (item.filename) {
-    router.push({ name: 'Results', query: { file: item.filename } })
+    router.push({
+      name: 'Results',
+      query: focusLowestPrice
+        ? {
+            file: item.filename,
+            sort_by: 'price',
+            sort_order: 'asc',
+            ai_recommended_only: 'true',
+          }
+        : { file: item.filename },
+    })
   }
 }
 function openDipTask(item: { task_id: number | null; keyword: string }) {
@@ -47,7 +57,7 @@ function openDipTask(item: { task_id: number | null; keyword: string }) {
   ) ?? taskSummaries.value.find(
     (candidate) => candidate.keyword.trim().toLowerCase() === item.keyword.trim().toLowerCase(),
   )
-  if (summary) openTask(summary)
+  if (summary) openTask(summary, true)
 }
 function openLowestItem(link: string) {
   if (link) window.open(link, '_blank', 'noopener,noreferrer')
