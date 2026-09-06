@@ -10,8 +10,11 @@ from datetime import datetime, timedelta
 
 from src.infrastructure.persistence.sqlite_bootstrap import bootstrap_sqlite_storage
 from src.infrastructure.persistence.sqlite_connection import sqlite_connection
-from src.infrastructure.persistence.storage_names import build_result_filename
-from src.services.price_history_service import parse_price_value
+from src.infrastructure.persistence.storage_names import (
+    build_result_filename,
+    normalize_keyword_from_filename,
+)
+from src.services.price_history_service import parse_price_value, normalize_keyword_slug
 from src.services.result_blacklist_service import normalize_blacklist_keywords
 
 
@@ -96,6 +99,40 @@ def _is_record_visible(record: dict) -> bool:
     return record.get("_effective_hidden") is not True
 
 
+def _sync_latest_snapshot_prices(conn, filename: str) -> None:
+    """Keep result sorting fields aligned with the latest market snapshot."""
+    keyword_slug = normalize_keyword_slug(normalize_keyword_from_filename(filename))
+    conn.execute(
+        """
+        UPDATE result_items
+        SET price = (
+                SELECT snapshot.price
+                FROM price_snapshots AS snapshot
+                WHERE snapshot.keyword_slug = ?
+                  AND snapshot.item_id = result_items.item_id
+                ORDER BY snapshot.snapshot_time DESC, snapshot.id DESC
+                LIMIT 1
+            ),
+            price_display = (
+                SELECT snapshot.price_display
+                FROM price_snapshots AS snapshot
+                WHERE snapshot.keyword_slug = ?
+                  AND snapshot.item_id = result_items.item_id
+                ORDER BY snapshot.snapshot_time DESC, snapshot.id DESC
+                LIMIT 1
+            )
+        WHERE result_items.result_filename = ?
+          AND EXISTS (
+              SELECT 1
+              FROM price_snapshots AS snapshot
+              WHERE snapshot.keyword_slug = ?
+                AND snapshot.item_id = result_items.item_id
+          )
+        """,
+        (keyword_slug, keyword_slug, filename, keyword_slug),
+    )
+
+
 def _load_filtered_records_from_conn(
     conn,
     *,
@@ -107,6 +144,8 @@ def _load_filtered_records_from_conn(
     include_hidden: bool,
     recent_days: int | None = None,
 ) -> list[dict]:
+    _sync_latest_snapshot_prices(conn, filename)
+    conn.commit()
     where_clause, params = _build_query_conditions(
         filename=filename,
         ai_recommended_only=ai_recommended_only,

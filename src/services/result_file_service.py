@@ -31,10 +31,28 @@ def enrich_records_with_price_insight(records: list[dict], filename: str) -> lis
     for record in records:
         info = record.get("商品信息", {}) or {}
         clone = dict(record)
+        item_id = str(info.get("商品ID") or "")
+        latest_snapshot = next(
+            (
+                snapshot
+                for snapshot in reversed(snapshots)
+                if str(snapshot.get("item_id") or "") == item_id
+            ),
+            None,
+        )
+        if latest_snapshot is not None:
+            clone["商品信息"] = {
+                **info,
+                "当前售价": latest_snapshot.get("price_display") or latest_snapshot.get("price"),
+            }
         clone["price_insight"] = build_item_price_context(
             snapshots,
-            item_id=str(info.get("商品ID") or ""),
-            current_price=parse_price_value(info.get("当前售价")),
+            item_id=item_id,
+            current_price=(
+                parse_price_value(latest_snapshot.get("price"))
+                if latest_snapshot is not None
+                else parse_price_value(info.get("当前售价"))
+            ),
             market_snapshots=visible_snapshots,
         )
         enriched.append(clone)
