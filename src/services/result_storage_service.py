@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from src.infrastructure.persistence.sqlite_bootstrap import bootstrap_sqlite_storage
@@ -651,3 +652,30 @@ def load_ai_recommended_item_ids(filename: str) -> set[str]:
         if item_id:
             item_ids.add(item_id)
     return item_ids
+
+
+def load_ai_recommended_item_ids_by_day(filename: str) -> dict[str, set[str]]:
+    """Return AI-recommended visible item IDs grouped by their crawl day."""
+    bootstrap_sqlite_storage()
+    with sqlite_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT substr(crawl_time, 1, 10) AS crawl_day, item_id
+            FROM result_items
+            WHERE result_filename = ?
+              AND is_recommended = 1
+              AND analysis_source = 'ai'
+              AND status = 'active'
+              AND crawl_time IS NOT NULL
+              AND item_id IS NOT NULL
+              AND item_id != ''
+            """,
+            (filename,),
+        ).fetchall()
+    grouped: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        day = str(row["crawl_day"] or "").strip()
+        item_id = str(row["item_id"] or "").strip()
+        if day and item_id:
+            grouped[day].add(item_id)
+    return dict(grouped)

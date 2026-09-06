@@ -19,6 +19,7 @@ from src.services.result_storage_service import (
     delete_result_file_records,
     list_result_files_with_task_names,
     load_ai_recommended_item_ids,
+    load_ai_recommended_item_ids_by_day,
     load_all_result_records,
     load_visible_result_item_ids,
     query_result_records,
@@ -138,7 +139,11 @@ async def get_result_file_insights(filename: str):
         keyword = filename.replace("_full_data.jsonl", "")
         # 价格趋势图只以 AI 推荐的商品价格为资料源，其余商品价格不计入统计。
         item_ids = load_visible_result_item_ids(filename) & load_ai_recommended_item_ids(filename)
-        return build_price_history_insights(keyword, visible_item_ids=item_ids)
+        return build_price_history_insights(
+            keyword,
+            visible_item_ids=item_ids,
+            ai_item_ids_by_day=load_ai_recommended_item_ids_by_day(filename),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

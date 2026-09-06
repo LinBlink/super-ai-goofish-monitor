@@ -17,6 +17,7 @@ from src.services.result_file_service import (
 )
 from src.services.result_storage_service import (
     load_ai_recommended_item_ids,
+    load_ai_recommended_item_ids_by_day,
     load_result_summary,
 )
 
@@ -276,8 +277,14 @@ async def summarize_result_file(
 
     # 价格趋势图只以 AI 推荐的商品价格为资料源，其余商品价格不计入统计。
     ai_recommended_item_ids = await asyncio.to_thread(load_ai_recommended_item_ids, filename)
+    ai_recommended_item_ids_by_day = await asyncio.to_thread(
+        load_ai_recommended_item_ids_by_day, filename
+    )
     price_history = await asyncio.to_thread(
-        build_price_history_insights, keyword, visible_item_ids=ai_recommended_item_ids
+        build_price_history_insights,
+        keyword,
+        visible_item_ids=ai_recommended_item_ids,
+        ai_item_ids_by_day=ai_recommended_item_ids_by_day,
     )
     history_summary = price_history.get("history_summary") or {}
 

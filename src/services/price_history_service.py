@@ -269,14 +269,24 @@ def _summarize_prices(records: Iterable[dict]) -> dict:
     }
 
 
-def _build_daily_trend(snapshots: list[dict]) -> list[dict]:
+def _build_daily_trend(
+    snapshots: list[dict],
+    ai_item_ids_by_day: Optional[dict[str, set[str]]] = None,
+) -> list[dict]:
     grouped: dict[str, list[dict]] = defaultdict(list)
     for snapshot in snapshots:
         grouped[str(snapshot.get("snapshot_day") or "")].append(snapshot)
 
     points: list[dict] = []
     for day in sorted(grouped.keys()):
-        day_records = _dedupe_latest(grouped[day], "item_id")
+        day_snapshots = grouped[day]
+        if ai_item_ids_by_day is not None and day in ai_item_ids_by_day:
+            day_snapshots = [
+                snapshot
+                for snapshot in day_snapshots
+                if str(snapshot.get("item_id") or "") in ai_item_ids_by_day[day]
+            ]
+        day_records = _dedupe_latest(day_snapshots, "item_id")
         summary = _summarize_prices(day_records)
         summary["day"] = day
         points.append(summary)
@@ -402,6 +412,7 @@ def build_price_history_insights(
     *,
     window_days: int = DEFAULT_HISTORY_WINDOW_DAYS,
     visible_item_ids: Optional[set[str]] = None,
+    ai_item_ids_by_day: Optional[dict[str, set[str]]] = None,
 ) -> dict:
     snapshots = load_price_snapshots(keyword)
     if visible_item_ids is not None:
@@ -435,7 +446,7 @@ def build_price_history_insights(
             "unique_items": len(latest_records_by_item),
             **_summarize_prices(latest_records_by_item),
         },
-        "daily_trend": _build_daily_trend(recent_snapshots),
+        "daily_trend": _build_daily_trend(recent_snapshots, ai_item_ids_by_day),
         "latest_snapshot_at": snapshots[-1].get("snapshot_time"),
     }
 
