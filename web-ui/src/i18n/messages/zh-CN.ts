@@ -364,7 +364,7 @@ const zhCN = {
       noTasksWithoutDataToday: '当前没有需要启动的今日无数据任务。',
       stopAllDone: '已停止全部任务并清空队列',
     },
-    createDialog: { trigger: '+ 创建新任务', title: '创建新监控任务（AI 或关键词）', submit: '创建任务', submitting: '提交中...' },
+    createDialog: { trigger: '创建新任务', title: '创建新监控任务（AI 或关键词）', submit: '创建任务', submitting: '提交中...' },
     editDialog: { title: '编辑任务: {task}', save: '保存更改' },
     criteria: { title: '重新生成 AI 标准', description: '修改详细需求后将重新生成 AI 分析标准。', descriptionRequired: '请填写新的详细需求。', action: '重新生成', generating: '生成中...' },
     deleteDialog: { title: '删除任务', descriptionWithTask: '确定删除任务「{task}」吗？此操作不可恢复。', descriptionFallback: '确定删除该任务吗？此操作不可恢复。', confirm: '确认删除' },
