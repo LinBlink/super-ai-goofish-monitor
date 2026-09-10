@@ -407,6 +407,8 @@ const zhCN = {
       analyzeImagesHint: '关闭后只分析商品文字描述和卖家资质，适合纯文本模型或节省 token。',
       aiTitleScreening: 'AI 标题预筛',
       aiTitleScreeningHint: '默认开启。所有任务执行时都会先用 AI 判断商品标题是否根本不符合要求，不符合则直接跳过，节省详情抓取与完整分析的性能。如需关闭可取消勾选。',
+      aiAnalysisConcurrency: 'AI 分析并发数',
+      aiAnalysisConcurrencyHint: '单个任务内同时分析的商品数量。默认为 1（串行），增大可加速处理但可能增加 API 限流风险。',
       notifyEnabled: '通知推送',
       notifyEnabledHint: '默认开启。命中商品后会向已配置的通知渠道推送；真正推送还需在系统设置中启用通知渠道。取消勾选则本任务不推送。',
       keywordRules: '关键词规则',

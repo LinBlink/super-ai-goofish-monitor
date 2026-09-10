@@ -312,7 +312,7 @@ def _get_rotation_settings(task_config: dict) -> dict:
 
 def _get_ai_analysis_concurrency(task_config: dict) -> int:
     configured = task_config.get("ai_analysis_concurrency")
-    default = _as_int(os.getenv("AI_ANALYSIS_CONCURRENCY"), 2)
+    default = _as_int(os.getenv("AI_ANALYSIS_CONCURRENCY"), 1)
     return max(1, _as_int(configured, default))
 
 

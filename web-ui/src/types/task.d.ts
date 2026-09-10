@@ -27,6 +27,7 @@ export interface Task {
   execution_status?: 'idle' | 'queued' | 'running';
   ai_title_screening?: boolean | null;
   notify_enabled?: boolean | null;
+  ai_analysis_concurrency?: number | null;
 }
 
 export interface TaskQueueState {
@@ -109,4 +110,5 @@ export interface TaskGenerateRequest {
   blacklist_keywords?: string[];
   ai_title_screening?: boolean | null;
   notify_enabled?: boolean | null;
+  ai_analysis_concurrency?: number | null;
 }

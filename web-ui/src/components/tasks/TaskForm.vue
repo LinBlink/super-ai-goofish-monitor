@@ -112,6 +112,7 @@ watch(() => [props.mode, props.initialData, props.defaultValues, props.defaultAc
       free_shipping: defaultValues.free_shipping ?? props.initialData.free_shipping ?? true,
       ai_title_screening: defaultValues.ai_title_screening ?? props.initialData.ai_title_screening ?? true,
       notify_enabled: defaultValues.notify_enabled ?? props.initialData.notify_enabled ?? true,
+      ai_analysis_concurrency: defaultValues.ai_analysis_concurrency ?? props.initialData.ai_analysis_concurrency ?? 1,
       new_publish_option:
         defaultValues.new_publish_option || props.initialData.new_publish_option || '__none__',
       region: defaultValues.region || props.initialData.region || '',
@@ -138,6 +139,7 @@ watch(() => [props.mode, props.initialData, props.defaultValues, props.defaultAc
       free_shipping: true,
       ai_title_screening: defaultValues.ai_title_screening ?? true,
       notify_enabled: defaultValues.notify_enabled ?? true,
+      ai_analysis_concurrency: defaultValues.ai_analysis_concurrency ?? 1,
       new_publish_option: '__none__',
       region: '',
       decision_mode: 'ai',
@@ -322,6 +324,16 @@ function handleSubmit() {
           <Switch id="ai-title-screening" v-model="form.ai_title_screening" />
           <p class="text-xs text-gray-500">
             {{ t('tasks.form.aiTitleScreeningHint') }}
+          </p>
+        </div>
+      </div>
+
+      <div v-if="form.decision_mode === 'ai'" class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+        <Label for="ai-analysis-concurrency" class="sm:text-right">{{ t('tasks.form.aiAnalysisConcurrency') }}</Label>
+        <div class="space-y-1 sm:col-span-3">
+          <Input id="ai-analysis-concurrency" v-model.number="form.ai_analysis_concurrency" type="number" min="1" max="10" class="sm:max-w-[120px]" />
+          <p class="text-xs text-gray-500">
+            {{ t('tasks.form.aiAnalysisConcurrencyHint') }}
           </p>
         </div>
       </div>

@@ -111,14 +111,16 @@ class SqliteTaskRepository(TaskRepository):
                     ai_prompt_base_file, ai_prompt_criteria_file, account_state_file,
                     account_strategy, free_shipping, new_publish_option, region,
                     decision_mode, keyword_rules_json, is_running, blacklist_keywords_json,
-                    execution_status, ai_title_screening, notify_enabled
+                    execution_status, ai_title_screening, notify_enabled,
+                    ai_analysis_concurrency
                 ) VALUES (
                     :id, :task_name, :enabled, :keyword, :description, :analyze_images,
                     :max_pages, :personal_only, :min_price, :max_price, :cron,
                     :ai_prompt_base_file, :ai_prompt_criteria_file, :account_state_file,
                     :account_strategy, :free_shipping, :new_publish_option, :region,
                     :decision_mode, :keyword_rules_json, :is_running, :blacklist_keywords_json,
-                    :execution_status, :ai_title_screening, :notify_enabled
+                    :execution_status, :ai_title_screening, :notify_enabled,
+                    :ai_analysis_concurrency
                 )
                 """,
                 payload,
@@ -153,6 +155,7 @@ class SqliteTaskRepository(TaskRepository):
         values["notify_enabled"] = (
             None if task.notify_enabled is None else int(task.notify_enabled)
         )
+        values["ai_analysis_concurrency"] = max(1, int(task.ai_analysis_concurrency or 1))
         exec_status = task.execution_status
         values["execution_status"] = getattr(exec_status, "value", exec_status)
         values["keyword_rules_json"] = json.dumps(task.keyword_rules or [], ensure_ascii=False)

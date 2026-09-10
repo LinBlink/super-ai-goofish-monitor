@@ -47,7 +47,8 @@ SCHEMA_STATEMENTS = (
         blacklist_keywords_json TEXT NOT NULL DEFAULT '[]',
         execution_status TEXT NOT NULL DEFAULT 'idle',
         ai_title_screening INTEGER,
-        notify_enabled INTEGER
+        notify_enabled INTEGER,
+        ai_analysis_concurrency INTEGER DEFAULT 1
     )
     """,
     """
@@ -170,6 +171,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     _migrate_tasks_execution_status(conn)
     _migrate_tasks_title_screening(conn)
     _migrate_tasks_notify_enabled(conn)
+    _migrate_tasks_ai_analysis_concurrency(conn)
     conn.commit()
 
 
@@ -222,6 +224,21 @@ def _migrate_tasks_notify_enabled(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE tasks ADD COLUMN notify_enabled INTEGER")
     conn.execute(
         "INSERT OR REPLACE INTO app_metadata(key, value) VALUES ('migration:tasks_notify_enabled', 'done')"
+    )
+
+
+def _migrate_tasks_ai_analysis_concurrency(conn: sqlite3.Connection) -> None:
+    """为 tasks 表添加 ai_analysis_concurrency 列（仅执行一次）。"""
+    row = conn.execute(
+        "SELECT value FROM app_metadata WHERE key = 'migration:tasks_ai_analysis_concurrency'"
+    ).fetchone()
+    if row is not None:
+        return
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+    if "ai_analysis_concurrency" not in cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN ai_analysis_concurrency INTEGER DEFAULT 1")
+    conn.execute(
+        "INSERT OR REPLACE INTO app_metadata(key, value) VALUES ('migration:tasks_ai_analysis_concurrency', 'done')"
     )
 
 
