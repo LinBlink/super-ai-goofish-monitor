@@ -267,13 +267,17 @@ class AIClient:
             if client is None:
                 continue
             try:
-                return await self._call_ai_with_single_model(
-                    client,
-                    config,
-                    messages,
-                    temperature=temperature,
-                    max_output_tokens=max_output_tokens,
-                    enable_json_output=enable_json_output,
+                call_timeout = getattr(self.settings, "call_timeout", 300) if self.settings else 300
+                return await asyncio.wait_for(
+                    self._call_ai_with_single_model(
+                        client,
+                        config,
+                        messages,
+                        temperature=temperature,
+                        max_output_tokens=max_output_tokens,
+                        enable_json_output=enable_json_output,
+                    ),
+                    timeout=call_timeout,
                 )
             except (
                 openai.APIConnectionError,

@@ -55,6 +55,7 @@ class AISettings(_EnvSettings):
     enable_response_format: bool = _env_field(True, "ENABLE_RESPONSE_FORMAT")
     enable_thinking: bool = _env_field(False, "ENABLE_THINKING")
     skip_analysis: bool = _env_field(False, "SKIP_AI_ANALYSIS")
+    call_timeout: int = _env_field(300, "AI_CALL_TIMEOUT_SECONDS")
     ai_models_json: Optional[str] = _env_field(None, "AI_MODELS")
 
     def _normalize_model_config(self, raw: Dict[str, Any]) -> Dict[str, Any]:

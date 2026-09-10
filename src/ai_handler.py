@@ -74,7 +74,7 @@ RATE_LIMIT_MAX_DELAY_SECONDS = 5 * 60 * 60
 # 非速率限制类调用失败的单次退避上限（如服务不可用/超时），不应等 5 小时。
 GENERAL_FAILURE_MAX_BACKOFF_SECONDS = 60
 # 单次 AI 请求超时秒数。超时即视作失败进入重试/兜底分支。
-AI_CALL_TIMEOUT_SECONDS = int(os.getenv("AI_CALL_TIMEOUT_SECONDS", "60"))
+AI_CALL_TIMEOUT_SECONDS = int(os.getenv("AI_CALL_TIMEOUT_SECONDS", "300"))
 # 熔断阈值：连续失败 N 次后熔断一段时间，期间直接跳过该模型的调用。
 AI_CIRCUIT_FAILURE_THRESHOLD = int(os.getenv("AI_CIRCUIT_FAILURE_THRESHOLD", "3"))
 # 熔断冷却时间（秒）：熔断开启后多久进入半开状态。

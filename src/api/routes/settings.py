@@ -454,7 +454,7 @@ async def test_ai_settings(model: AIModelConfigModel):
         client_params = {
             "api_key": model.api_key or env_manager.get_value("OPENAI_API_KEY", ""),
             "base_url": model.base_url,
-            "timeout": httpx.Timeout(30.0),
+            "timeout": httpx.Timeout(float(env_manager.get_value("AI_CALL_TIMEOUT_SECONDS", "300"))),
         }
         proxy_url = model.proxy_url
         if proxy_url:
