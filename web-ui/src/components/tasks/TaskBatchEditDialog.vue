@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Bell, Layers, ScanSearch, Sparkles } from 'lucide-vue-next'
+import { Bell, Layers, ScanSearch, Sparkles, Clock } from 'lucide-vue-next'
 import type { TaskBatchUpdate } from '@/types/task.d.ts'
 
 const UNCHANGED = '__unchanged__'
@@ -43,6 +43,7 @@ const notifyEnabled = ref<string>(UNCHANGED)
 const aiTitleScreening = ref<string>(UNCHANGED)
 const maxPages = ref<string>(UNCHANGED)
 const newPublishOption = ref<string>(UNCHANGED)
+const cron = ref<string>(UNCHANGED)
 const submitting = ref(false)
 
 watch(
@@ -53,6 +54,7 @@ watch(
       aiTitleScreening.value = UNCHANGED
       maxPages.value = UNCHANGED
       newPublishOption.value = UNCHANGED
+      cron.value = UNCHANGED
       submitting.value = false
     }
   },
@@ -86,12 +88,18 @@ const newPublishEffective = computed(() => {
   return newPublishOption.value
 })
 
+const cronEffective = computed(() => {
+  if (cron.value === UNCHANGED) return null
+  return cron.value || null
+})
+
 const hasAnyChange = computed(
   () =>
     notifyEnabledEffective.value !== null ||
     aiTitleScreeningEffective.value !== null ||
     maxPagesEffective.value !== null ||
-    newPublishEffective.value !== null,
+    newPublishEffective.value !== null ||
+    cronEffective.value !== null,
 )
 
 const maxPagesError = computed(() => {
@@ -120,6 +128,9 @@ async function onSubmit() {
   }
   if (newPublishEffective.value !== null) {
     updates.new_publish_option = newPublishEffective.value || null
+  }
+  if (cronEffective.value !== null) {
+    updates.cron = cronEffective.value || null
   }
   submitting.value = true
   try {

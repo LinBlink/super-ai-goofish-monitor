@@ -333,7 +333,7 @@ class TaskUpdate(BaseModel):
 
 
 _BATCH_ALLOWED_FIELDS = frozenset(
-    {"notify_enabled", "ai_title_screening", "max_pages", "new_publish_option"}
+    {"notify_enabled", "ai_title_screening", "max_pages", "new_publish_option", "cron"}
 )
 
 
@@ -364,6 +364,7 @@ class TaskBatchUpdate(BaseModel):
     ai_title_screening: Optional[bool] = None
     max_pages: Optional[int] = None
     new_publish_option: Optional[str] = None
+    cron: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -383,7 +384,7 @@ class TaskBatchUpdate(BaseModel):
         # 变成 None，会被误判为「没传字段」而拒绝 422。
         if not self.model_fields_set:
             raise ValueError(
-                "至少需要指定一个批量修改字段（notify_enabled / ai_title_screening / max_pages / new_publish_option）。"
+                "至少需要指定一个批量修改字段（notify_enabled / ai_title_screening / max_pages / new_publish_option / cron）。"
             )
         return self
 
@@ -400,6 +401,16 @@ class TaskBatchUpdate(BaseModel):
     @classmethod
     def empty_str_to_none(cls, value):
         return _normalize_optional_string(value)
+
+    @field_validator("cron", mode="before")
+    @classmethod
+    def normalize_cron(cls, value):
+        return _normalize_optional_string(value)
+
+    @field_validator("cron")
+    @classmethod
+    def validate_cron(cls, value):
+        return _validate_cron_expression(value)
 
 
 class TaskGenerateRequest(BaseModel):

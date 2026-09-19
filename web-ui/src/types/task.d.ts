@@ -71,6 +71,7 @@ export interface TaskBatchUpdate {
   ai_title_screening?: boolean | null
   max_pages?: number | null
   new_publish_option?: string | null
+  cron?: string | null
 }
 
 export interface TaskBatchUpdateRequest {
